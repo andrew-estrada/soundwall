@@ -1,0 +1,32 @@
+You are helping build Soundwall, a local-first open-source Vite + React + TypeScript app.
+
+Product goal:
+Soundwall connects to Spotify, pulls the user's top tracks, infers top albums, and generates a cover-only album collage that can be exported as PNG or PDF.
+
+MVP constraints:
+- No backend.
+- No database.
+- No paid hosting.
+- No user accounts.
+- No server-side secrets.
+- Use Spotify Authorization Code with PKCE.
+- Use VITE_SPOTIFY_CLIENT_ID from environment variables.
+- Keep access tokens local to the browser.
+- Do not store user listening data permanently.
+- V1 is Spotify-login auto-collage only.
+- Do not add manual album search, drag-and-drop, Apple Music, print store, or social sharing yet.
+
+Code style:
+- Use TypeScript.
+- Keep functions small and testable.
+- Separate Spotify API logic from collage rendering logic.
+- Avoid over-engineering.
+- Prefer readable code over clever abstractions.
+- Add clear error states for auth failure, missing env vars, API errors, and not enough album artwork.
+
+UX:
+- Home screen should be simple.
+- Main action is Connect Spotify.
+- After login, immediately generate a collage.
+- Controls should include grid size, spacing, background color, order, one-album-per-artist toggle, export size, PNG export, and PDF export.
+- Cover art only. No album labels in V1.
