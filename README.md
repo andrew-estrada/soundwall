@@ -123,4 +123,8 @@ Spotify redirects here after login. Soundwall exchanges the authorization code f
 
 ## License
 
-Open source — see repository license file if present.
+Soundwall’s source code is licensed under the MIT License.
+
+This license applies only to the Soundwall source code. It does not grant rights to Spotify content, album artwork, artist images, metadata, trademarks, or other third-party content displayed or exported through the app.
+
+Soundwall uses Spotify data through the Spotify Web API. Users are responsible for complying with Spotify’s Developer Terms, Spotify’s branding guidelines, and any applicable copyright or rightsholder restrictions when using exported collages.
