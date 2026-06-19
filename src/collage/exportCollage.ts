@@ -40,7 +40,7 @@ export function buildExportFilename(
   settings: CollageSettings,
   extension: 'png' | 'pdf',
 ): string {
-  return `soundwall-${settings.exportPresetId}-${settings.gridRows}x${settings.gridCols}.${extension}`
+  return `soundwall-${settings.exportPresetId}-${settings.gridCols}x${settings.gridRows}.${extension}`
 }
 
 export function getPdfPageSizeInches(settings: CollageSettings): {
@@ -114,7 +114,7 @@ export async function prepareCollageExport(
     return {
       canvas,
       failedImageCount,
-      filenameBase: `soundwall-${settings.exportPresetId}-${settings.gridRows}x${settings.gridCols}`,
+      filenameBase: `soundwall-${settings.exportPresetId}-${settings.gridCols}x${settings.gridRows}`,
     }
   } catch (error) {
     if (error instanceof CollageExportError) {
@@ -155,10 +155,67 @@ export function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   })
 }
 
-export function formatExportMessage(result: CollageExportResult): string {
+export function formatExportMessage(
+  result: CollageExportResult & { downscaled?: boolean },
+): string {
+  const parts: string[] = []
+
+  if (result.downscaled) {
+    parts.push('PDF image was downscaled for browser limits')
+  }
+
   if (result.failedImageCount > 0) {
-    return `Exported ${result.filename} with ${result.failedImageCount} missing cover${result.failedImageCount === 1 ? '' : 's'}.`
+    parts.push(
+      `${result.failedImageCount} missing cover${result.failedImageCount === 1 ? '' : 's'}`,
+    )
+  }
+
+  if (parts.length > 0) {
+    return `Exported ${result.filename} (${parts.join('; ')}).`
   }
 
   return `Exported ${result.filename}.`
+}
+
+export const PDF_MAX_CANVAS_EDGE = 4096
+
+export function hasExportGridAspectMismatch(
+  settings: CollageSettings,
+  tolerance = 0.12,
+): boolean {
+  const exportAspect = settings.exportWidth / settings.exportHeight
+  const gridAspect = settings.gridCols / settings.gridRows
+  const relativeDifference = Math.abs(exportAspect - gridAspect) / exportAspect
+
+  return relativeDifference > tolerance
+}
+
+export function isLargePosterExport(exportPresetId: string): boolean {
+  return exportPresetId.startsWith('poster-')
+}
+
+export function downscaleCanvasForEmbed(
+  canvas: HTMLCanvasElement,
+  maxEdge = PDF_MAX_CANVAS_EDGE,
+): HTMLCanvasElement {
+  const longestEdge = Math.max(canvas.width, canvas.height)
+
+  if (longestEdge <= maxEdge) {
+    return canvas
+  }
+
+  const scale = maxEdge / longestEdge
+  const output = document.createElement('canvas')
+  output.width = Math.max(1, Math.round(canvas.width * scale))
+  output.height = Math.max(1, Math.round(canvas.height * scale))
+
+  const context = output.getContext('2d')
+
+  if (!context) {
+    throw new CollageExportError('Failed to downscale the collage for PDF export.')
+  }
+
+  context.drawImage(canvas, 0, 0, output.width, output.height)
+
+  return output
 }

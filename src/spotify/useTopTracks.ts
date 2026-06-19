@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getValidAccessToken } from '../auth'
 import type { RankedSpotifyTrack, TopTracksState } from '../types'
 import { SpotifyApiError } from './client'
@@ -22,12 +22,19 @@ function toTopTracksError(error: unknown): string {
   return 'Failed to fetch your top tracks from Spotify.'
 }
 
-export function useTopTracks(isConnected: boolean) {
+export function useTopTracks(
+  isConnected: boolean,
+  onSessionInvalidated?: () => void,
+) {
   const [state, setState] = useState<TopTracksState>(initialState)
+  const [retryNonce, setRetryNonce] = useState(0)
+
+  const retry = useCallback(() => {
+    setRetryNonce((current) => current + 1)
+  }, [])
 
   useEffect(() => {
     if (!isConnected) {
-      setState(initialState)
       return
     }
 
@@ -39,11 +46,13 @@ export function useTopTracks(isConnected: boolean) {
       const accessToken = getValidAccessToken()
 
       if (!accessToken) {
+        onSessionInvalidated?.()
+
         if (!cancelled) {
           setState({
             status: 'error',
             tracks: [],
-            error: 'Spotify session expired. Log out and connect again.',
+            error: 'Spotify session expired. Connect to Spotify again.',
           })
         }
         return
@@ -56,6 +65,10 @@ export function useTopTracks(isConnected: boolean) {
           setState({ status: 'success', tracks, error: null })
         }
       } catch (error) {
+        if (error instanceof SpotifyApiError && error.status === 401) {
+          onSessionInvalidated?.()
+        }
+
         if (!cancelled) {
           setState({
             status: 'error',
@@ -71,12 +84,15 @@ export function useTopTracks(isConnected: boolean) {
     return () => {
       cancelled = true
     }
-  }, [isConnected])
+  }, [isConnected, onSessionInvalidated, retryNonce])
+
+  const activeState = isConnected ? state : initialState
 
   return {
-    ...state,
-    isLoading: state.status === 'loading',
-    isReady: state.status === 'success',
+    ...activeState,
+    isLoading: activeState.status === 'loading',
+    isReady: activeState.status === 'success',
+    retry,
   }
 }
 

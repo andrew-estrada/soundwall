@@ -25,6 +25,11 @@ export function useAuth() {
     setAuthState({ status: 'disconnected' })
   }, [])
 
+  const invalidateSession = useCallback(() => {
+    disconnectSpotify()
+    setAuthState({ status: 'disconnected' })
+  }, [])
+
   const dismissError = useCallback(() => {
     setAuthState((current) =>
       current.status === 'error' ? { status: 'disconnected' } : current,
@@ -35,6 +40,7 @@ export function useAuth() {
     authState,
     connect,
     logout,
+    invalidateSession,
     dismissError,
     isConnected: authState.status === 'connected',
     isConnecting: authState.status === 'connecting',

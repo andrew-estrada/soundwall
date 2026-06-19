@@ -4,7 +4,11 @@ import {
   CollageExportError,
   exportCollagePdf,
   exportCollagePng,
+  findGridPresetByDimensions,
   formatExportMessage,
+  gridsMatch,
+  hasExportGridAspectMismatch,
+  isLargePosterExport,
 } from '../collage'
 import {
   EXPORT_SIZE_PRESETS,
@@ -22,6 +26,8 @@ interface ControlPanelProps {
   isConnected: boolean
   disabled?: boolean
   onLogout: () => void
+  onRetryTracks?: () => void
+  tracksError?: string | null
 }
 
 const EXPORT_GROUPS = [
@@ -43,6 +49,8 @@ export function ControlPanel({
   isConnected,
   disabled = true,
   onLogout,
+  onRetryTracks,
+  tracksError = null,
 }: ControlPanelProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [exportingFormat, setExportingFormat] = useState<'png' | 'pdf' | null>(null)
@@ -50,7 +58,19 @@ export function ControlPanel({
   const [exportError, setExportError] = useState<string | null>(null)
 
   const cellCount = settings.gridCols * settings.gridRows
+  const exportPreset = findCollagePreset(settings.exportPresetId)
+  const recommendedGrid = exportPreset?.recommendedGrid
+  const showRecommendedGrid =
+    exportPreset &&
+    exportPreset.category !== 'grid' &&
+    recommendedGrid &&
+    !gridsMatch(recommendedGrid, {
+      cols: settings.gridCols,
+      rows: settings.gridRows,
+    })
   const hasAlbumShortage = isConnected && availableAlbumCount > 0 && availableAlbumCount < cellCount
+  const hasAspectMismatch = hasExportGridAspectMismatch(settings)
+  const showPosterPdfHint = isLargePosterExport(settings.exportPresetId)
 
   function update<K extends keyof CollageSettings>(key: K, value: CollageSettings[K]) {
     onSettingsChange({ ...settings, [key]: value })
@@ -84,7 +104,33 @@ export function ControlPanel({
     })
   }
 
-  function handleRegenerate() {
+  function applyRecommendedGrid() {
+    if (!recommendedGrid) {
+      return
+    }
+
+    const gridPreset = findGridPresetByDimensions(
+      recommendedGrid.cols,
+      recommendedGrid.rows,
+    )
+
+    onSettingsChange({
+      ...settings,
+      gridCols: recommendedGrid.cols,
+      gridRows: recommendedGrid.rows,
+      gridPresetId: gridPreset?.id ?? settings.gridPresetId,
+    })
+  }
+
+  function handleShuffleLayout() {
+    if (settings.order === 'random') {
+      onSettingsChange({
+        ...settings,
+        shuffleSeed: settings.shuffleSeed + 1,
+      })
+      return
+    }
+
     onSettingsChange({
       ...settings,
       order: 'random',
@@ -141,6 +187,9 @@ export function ControlPanel({
         <p className="controls-panel__warning" role="status">
           Only {availableAlbumCount} albums available for a {settings.gridCols} × {settings.gridRows}{' '}
           grid. Empty cells will use the background color.
+          {settings.oneAlbumPerArtist
+            ? ' One album per artist limits variety — compilation albums share one artist slot.'
+            : null}
         </p>
       ) : null}
 
@@ -175,6 +224,23 @@ export function ControlPanel({
             ))}
           </select>
         </div>
+
+        {showRecommendedGrid && recommendedGrid ? (
+          <div className="controls-panel__inline-action">
+            <p className="controls-panel__hint">
+              Export size and grid layout are independent. Recommended grid:{' '}
+              {formatRecommendedGrid(recommendedGrid)}.
+            </p>
+            <button
+              type="button"
+              className="export-button export-button--ghost"
+              disabled={disabled}
+              onClick={applyRecommendedGrid}
+            >
+              Apply recommended grid
+            </button>
+          </div>
+        ) : null}
 
         <div className="control-field">
           <label className="control-field__label" htmlFor="grid-size">
@@ -230,6 +296,14 @@ export function ControlPanel({
         </div>
       </div>
 
+      {hasAspectMismatch ? (
+        <p className="controls-panel__warning" role="status">
+          Export size aspect ratio ({settings.exportWidth} × {settings.exportHeight}) differs from
+          the grid layout ({settings.gridCols} × {settings.gridRows}). Preview shows the grid
+          shape; export uses the selected export dimensions.
+        </p>
+      ) : null}
+
       <div className="controls-panel__section">
         <h3 className="controls-panel__section-title">Albums</h3>
 
@@ -240,7 +314,7 @@ export function ControlPanel({
           <select
             id="order"
             className="control-field__select"
-            value={settings.order === 'artist' ? 'rank' : settings.order}
+            value={settings.order}
             disabled={disabled}
             onChange={(event) => update('order', event.target.value as CollageOrder)}
           >
@@ -272,15 +346,26 @@ export function ControlPanel({
           type="button"
           className="export-button"
           disabled={disabled || availableAlbumCount === 0}
-          onClick={handleRegenerate}
+          onClick={handleShuffleLayout}
         >
           <Shuffle size={16} aria-hidden="true" />
-          Regenerate shuffle
+          {settings.order === 'random' ? 'Regenerate shuffle' : 'Shuffle layout'}
         </button>
+
+        {settings.order === 'rank' ? (
+          <p className="controls-panel__hint">Shuffles the current albums and switches order to Shuffled.</p>
+        ) : null}
       </div>
 
       <div className="controls-panel__section">
         <h3 className="controls-panel__section-title">Export</h3>
+
+        {showPosterPdfHint ? (
+          <p className="controls-panel__hint">
+            Large poster exports are most reliable as PNG. PDF may downscale the image to fit browser
+            limits.
+          </p>
+        ) : null}
 
         <button
           type="button"
@@ -320,6 +405,17 @@ export function ControlPanel({
           <p className="controls-panel__success" role="status">
             {exportMessage}
           </p>
+        ) : null}
+
+        {onRetryTracks && isConnected && tracksError ? (
+          <button
+            type="button"
+            className="export-button export-button--ghost"
+            disabled={isExporting}
+            onClick={onRetryTracks}
+          >
+            Retry loading tracks
+          </button>
         ) : null}
       </div>
 

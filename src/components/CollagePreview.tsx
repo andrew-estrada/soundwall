@@ -1,7 +1,5 @@
-import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { AlertCircle, Disc3 } from 'lucide-react'
-import { orderAlbums } from '../collage/orderAlbums'
 import type { AlbumCandidate, CollageSettings } from '../types'
 
 interface CollagePreviewProps {
@@ -10,6 +8,10 @@ interface CollagePreviewProps {
   isConnected: boolean
   isLoadingTracks?: boolean
   tracksError?: string | null
+  trackCount?: number
+  availableAlbumCount?: number
+  onRetry?: () => void
+  onReconnect?: () => void
 }
 
 export function CollagePreview({
@@ -18,14 +20,13 @@ export function CollagePreview({
   isConnected,
   isLoadingTracks = false,
   tracksError = null,
+  trackCount = 0,
+  availableAlbumCount = 0,
+  onRetry,
+  onReconnect,
 }: CollagePreviewProps) {
-  const { gridCols, gridRows, spacing, backgroundColor, order } = settings
+  const { gridCols, gridRows, spacing, backgroundColor, oneAlbumPerArtist } = settings
   const cellCount = gridCols * gridRows
-
-  const orderedAlbums = useMemo(
-    () => orderAlbums(albums, order, settings.shuffleSeed),
-    [albums, order, settings.shuffleSeed],
-  )
 
   const gridStyle = {
     '--preview-cols': gridCols,
@@ -37,9 +38,39 @@ export function CollagePreview({
     gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
   } as CSSProperties
 
+  function renderEmptyAlbumState() {
+    return (
+      <div className="collage-preview__empty">
+        <Disc3 className="collage-preview__empty-icon" size={40} aria-hidden="true" />
+        <p className="collage-preview__empty-text">
+          Could not build a collage from your top tracks yet.
+        </p>
+        <ul className="collage-preview__empty-list">
+          {trackCount === 0 ? (
+            <li>
+              Spotify returned no top tracks. You may need more listening history, or your account
+              may need to be on the Spotify Developer app allowlist.
+            </li>
+          ) : (
+            <li>
+              Found {trackCount} top tracks, but {availableAlbumCount} usable album
+              {availableAlbumCount === 1 ? '' : 's'} with cover art.
+            </li>
+          )}
+          <li>Tracks without album artwork are skipped.</li>
+          {oneAlbumPerArtist ? (
+            <li>
+              One album per artist is on — turn it off in controls if you need more covers.
+            </li>
+          ) : null}
+        </ul>
+      </div>
+    )
+  }
+
   function renderGridCells(mode: 'loading' | 'albums') {
     return Array.from({ length: cellCount }, (_, index) => {
-      const album = mode === 'albums' ? orderedAlbums[index] : null
+      const album = mode === 'albums' ? albums[index] : null
 
       if (mode === 'loading') {
         return (
@@ -97,23 +128,28 @@ export function CollagePreview({
     }
 
     if (tracksError) {
+      const isSessionError = /expired|connect again/i.test(tracksError)
+
       return (
         <div className="collage-preview__empty collage-preview__empty--error">
           <AlertCircle className="collage-preview__empty-icon" size={36} aria-hidden="true" />
           <p className="collage-preview__empty-text">{tracksError}</p>
+          {isSessionError && onReconnect ? (
+            <button type="button" className="connect-button" onClick={onReconnect}>
+              Connect Spotify again
+            </button>
+          ) : null}
+          {!isSessionError && onRetry ? (
+            <button type="button" className="export-button" onClick={onRetry}>
+              Try again
+            </button>
+          ) : null}
         </div>
       )
     }
 
-    if (orderedAlbums.length === 0) {
-      return (
-        <div className="collage-preview__empty">
-          <Disc3 className="collage-preview__empty-icon" size={40} aria-hidden="true" />
-          <p className="collage-preview__empty-text">
-            No album covers are available yet. Try reconnecting to Spotify.
-          </p>
-        </div>
-      )
+    if (albums.length === 0) {
+      return renderEmptyAlbumState()
     }
 
     return (

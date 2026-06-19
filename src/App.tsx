@@ -14,8 +14,19 @@ import { useTopTracks } from './spotify'
 import type { CollageSettings } from './types'
 
 function App() {
-  const { authState, connect, logout, dismissError, isConnected, isConnecting } = useAuth()
-  const { tracks, isLoading, error: tracksError } = useTopTracks(isConnected)
+  const {
+    authState,
+    connect,
+    logout,
+    invalidateSession,
+    dismissError,
+    isConnected,
+    isConnecting,
+  } = useAuth()
+  const { tracks, isLoading, error: tracksError, retry: retryTracks } = useTopTracks(
+    isConnected,
+    invalidateSession,
+  )
   const [settings, setSettings] = useState<CollageSettings>(DEFAULT_COLLAGE_SETTINGS)
 
   const scoreOptions = useMemo(
@@ -66,6 +77,10 @@ function App() {
             isConnected={isConnected}
             isLoadingTracks={isLoading}
             tracksError={tracksError}
+            trackCount={tracks.length}
+            availableAlbumCount={availableAlbums.length}
+            onRetry={retryTracks}
+            onReconnect={() => void connect()}
           />
         }
         controls={
@@ -77,6 +92,8 @@ function App() {
             isConnected={isConnected}
             disabled={controlsDisabled}
             onLogout={logout}
+            onRetryTracks={retryTracks}
+            tracksError={tracksError}
           />
         }
         footer={<PrivacySection />}

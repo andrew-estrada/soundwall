@@ -1,5 +1,3 @@
-import type { CollageAlbum, CollageSettings } from '../types'
-
 export { DEFAULT_COLLAGE_SETTINGS } from './constants'
 export { scoreAlbumsFromTracks } from './albumScoring'
 export {
@@ -14,7 +12,10 @@ export {
   EXPORT_DPI,
   ImageLoadError,
   buildExportFilename,
+  downscaleCanvasForEmbed,
   getPdfPageSizeInches,
+  hasExportGridAspectMismatch,
+  isLargePosterExport,
   prepareCollageExport,
 } from './exportCollage'
 export type {
@@ -32,19 +33,8 @@ export {
   EXPORT_SIZE_PRESETS,
   GRID_PRESETS,
   findCollagePreset,
+  findGridPresetByDimensions,
   formatRecommendedGrid,
   getPresetsByCategory,
+  gridsMatch,
 } from './presets'
-
-/** @deprecated Use drawCollage or exportCollagePng instead. */
-export function buildCollageAlbums(_albums: CollageAlbum[]): CollageAlbum[] {
-  return []
-}
-
-/** @deprecated Use drawCollage instead. */
-export function renderCollage(
-  _albums: CollageAlbum[],
-  _settings: CollageSettings,
-): HTMLCanvasElement | null {
-  return null
-}
