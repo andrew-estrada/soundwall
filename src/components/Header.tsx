@@ -1,18 +1,23 @@
+import { Disc3 } from 'lucide-react'
+
 interface HeaderProps {
-  description?: string
+  isConnected?: boolean
 }
 
-export function Header({
-  description = 'Turn your top Spotify tracks into a cover-art collage. Connect your account to get started.',
-}: HeaderProps) {
+export function Header({ isConnected = false }: HeaderProps) {
   return (
-    <header className="app-shell__header">
-      <div className="app-shell__brand-row">
-        <div>
-          <h1 className="header__title">Soundwall</h1>
-          <p className="header__description">{description}</p>
-        </div>
-      </div>
+    <header className="topbar">
+      <span className="brand">
+        <Disc3 className="brand__icon" size={22} aria-hidden="true" />
+        <span className="brand__name">Soundwall</span>
+      </span>
+
+      {isConnected ? (
+        <span className="topbar__status">
+          <span className="topbar__status-dot" aria-hidden="true" />
+          Connected to Spotify
+        </span>
+      ) : null}
     </header>
   )
 }

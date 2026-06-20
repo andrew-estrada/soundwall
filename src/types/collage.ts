@@ -23,13 +23,13 @@ export interface CollageSettings {
   gridPresetId: string
   gridCols: number
   gridRows: number
+  albumCount: number
   spacing: number
   backgroundColor: string
   order: CollageOrder
   oneAlbumPerArtist: boolean
   exportWidth: number
   exportHeight: number
-  shuffleSeed: number
 }
 
 export interface CollageAlbum {
