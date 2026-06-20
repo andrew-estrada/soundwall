@@ -1,10 +1,12 @@
-import { Download, FileImage, LoaderCircle, LogOut, Shuffle } from 'lucide-react'
+import { Download, FileImage, LoaderCircle, LogOut, RotateCcw, Shuffle } from 'lucide-react'
 import { useState } from 'react'
 import {
+  ALBUM_COUNT_OPTIONS,
   CollageExportError,
   exportCollagePdf,
   exportCollagePng,
   findGridPresetByDimensions,
+  formatAlbumCountGridHint,
   formatExportMessage,
   gridsMatch,
   hasExportGridAspectMismatch,
@@ -21,11 +23,13 @@ import type { AlbumCandidate, CollageOrder, CollageSettings } from '../types'
 interface ControlPanelProps {
   settings: CollageSettings
   onSettingsChange: (settings: CollageSettings) => void
-  orderedAlbums: AlbumCandidate[]
+  visibleAlbums: AlbumCandidate[]
   availableAlbumCount: number
   isConnected: boolean
   disabled?: boolean
   onLogout: () => void
+  onResetSettings: () => void
+  onReshuffle: () => void
   onRetryTracks?: () => void
   tracksError?: string | null
 }
@@ -37,18 +41,20 @@ const EXPORT_GROUPS = [
 ]
 
 const ORDER_OPTIONS: { value: CollageOrder; label: string }[] = [
-  { value: 'rank', label: 'Ranked' },
+  { value: 'rank', label: 'Most played first' },
   { value: 'random', label: 'Shuffled' },
 ]
 
 export function ControlPanel({
   settings,
   onSettingsChange,
-  orderedAlbums,
+  visibleAlbums,
   availableAlbumCount,
   isConnected,
   disabled = true,
   onLogout,
+  onResetSettings,
+  onReshuffle,
   onRetryTracks,
   tracksError = null,
 }: ControlPanelProps) {
@@ -58,6 +64,14 @@ export function ControlPanel({
   const [exportError, setExportError] = useState<string | null>(null)
 
   const cellCount = settings.gridCols * settings.gridRows
+  const selectedAlbumCount = visibleAlbums.length
+  const hasInsufficientAlbums =
+    isConnected && availableAlbumCount > 0 && availableAlbumCount < settings.albumCount
+  const hasLayoutShortage = cellCount < settings.albumCount
+  const hasEmptyCells =
+    isConnected && selectedAlbumCount > 0 && cellCount > selectedAlbumCount
+  const albumCountGridHint = formatAlbumCountGridHint(settings.albumCount, settings.gridPresetId)
+  const allowArtistDuplicates = !settings.oneAlbumPerArtist
   const exportPreset = findCollagePreset(settings.exportPresetId)
   const recommendedGrid = exportPreset?.recommendedGrid
   const showRecommendedGrid =
@@ -68,9 +82,9 @@ export function ControlPanel({
       cols: settings.gridCols,
       rows: settings.gridRows,
     })
-  const hasAlbumShortage = isConnected && availableAlbumCount > 0 && availableAlbumCount < cellCount
   const hasAspectMismatch = hasExportGridAspectMismatch(settings)
   const showPosterPdfHint = isLargePosterExport(settings.exportPresetId)
+  const canExport = !disabled && !isExporting && visibleAlbums.length > 0
 
   function update<K extends keyof CollageSettings>(key: K, value: CollageSettings[K]) {
     onSettingsChange({ ...settings, [key]: value })
@@ -122,22 +136,6 @@ export function ControlPanel({
     })
   }
 
-  function handleShuffleLayout() {
-    if (settings.order === 'random') {
-      onSettingsChange({
-        ...settings,
-        shuffleSeed: settings.shuffleSeed + 1,
-      })
-      return
-    }
-
-    onSettingsChange({
-      ...settings,
-      order: 'random',
-      shuffleSeed: settings.shuffleSeed + 1,
-    })
-  }
-
   async function handleExport(format: 'png' | 'pdf') {
     setIsExporting(true)
     setExportingFormat(format)
@@ -146,7 +144,7 @@ export function ControlPanel({
 
     try {
       const exportOptions = {
-        albums: orderedAlbums,
+        albums: visibleAlbums,
         settings,
       }
 
@@ -170,39 +168,35 @@ export function ControlPanel({
 
   return (
     <aside className="controls-panel" aria-label="Collage controls">
-      <h2 className="controls-panel__title">Controls</h2>
+      <h2 className="controls-panel__title">Customize</h2>
 
-      <div className="controls-panel__stats" aria-live="polite">
-        <p className="controls-panel__stat">
-          <span className="controls-panel__stat-label">Albums available</span>
-          <span className="controls-panel__stat-value">{availableAlbumCount}</span>
-        </p>
-        <p className="controls-panel__stat">
-          <span className="controls-panel__stat-label">Grid cells</span>
-          <span className="controls-panel__stat-value">{cellCount}</span>
-        </p>
-      </div>
-
-      {hasAlbumShortage ? (
+      {hasInsufficientAlbums ? (
         <p className="controls-panel__warning" role="status">
-          Only {availableAlbumCount} albums available for a {settings.gridCols} × {settings.gridRows}{' '}
-          grid. Empty cells will use the background color.
-          {settings.oneAlbumPerArtist
-            ? ' One album per artist limits variety — compilation albums share one artist slot.'
-            : null}
+          You have {availableAlbumCount} album covers — fewer than the {settings.albumCount} you
+          selected. We&apos;ll use every cover we found. Try allowing artist duplicates for more
+          variety.
         </p>
       ) : null}
 
-      {!isConnected ? (
-        <p className="controls-panel__hint">Connect Spotify to generate your collage.</p>
+      {hasLayoutShortage ? (
+        <p className="controls-panel__warning" role="status">
+          Your {settings.gridCols} × {settings.gridRows} layout only shows {cellCount} covers, but
+          you selected {settings.albumCount}.
+          {albumCountGridHint ? ` ${albumCountGridHint}` : ' Try a larger layout.'}
+        </p>
+      ) : null}
+
+      {!hasLayoutShortage && hasEmptyCells ? (
+        <p className="controls-panel__warning" role="status">
+          Your layout has {cellCount} cells but only {selectedAlbumCount} covers will appear. Empty
+          cells use your background color.
+        </p>
       ) : null}
 
       <div className="controls-panel__section">
-        <h3 className="controls-panel__section-title">Layout</h3>
-
         <div className="control-field">
           <label className="control-field__label" htmlFor="export-size">
-            Export size
+            Size
           </label>
           <select
             id="export-size"
@@ -223,17 +217,42 @@ export function ControlPanel({
               </optgroup>
             ))}
           </select>
+          <p className="control-field__hint">Final dimensions of your exported image.</p>
+        </div>
+
+        <div className="control-field">
+          <label className="control-field__label" htmlFor="album-count">
+            Album count
+          </label>
+          <select
+            id="album-count"
+            className="control-field__select"
+            value={settings.albumCount}
+            disabled={disabled}
+            onChange={(event) => update('albumCount', Number(event.target.value))}
+          >
+            {ALBUM_COUNT_OPTIONS.map((count) => (
+              <option key={count} value={count}>
+                {count} covers
+              </option>
+            ))}
+          </select>
+          {albumCountGridHint && !hasLayoutShortage ? (
+            <p className="control-field__hint">{albumCountGridHint}</p>
+          ) : (
+            <p className="control-field__hint">How many album covers to include in the collage.</p>
+          )}
         </div>
 
         {showRecommendedGrid && recommendedGrid ? (
           <div className="controls-panel__inline-action">
-            <p className="controls-panel__hint">
+            <p className="control-field__hint">
               Export size and grid layout are independent. Recommended grid:{' '}
               {formatRecommendedGrid(recommendedGrid)}.
             </p>
             <button
               type="button"
-              className="export-button export-button--ghost"
+              className="control-button control-button--ghost"
               disabled={disabled}
               onClick={applyRecommendedGrid}
             >
@@ -244,7 +263,7 @@ export function ControlPanel({
 
         <div className="control-field">
           <label className="control-field__label" htmlFor="grid-size">
-            Grid size
+            Layout
           </label>
           <select
             id="grid-size"
@@ -255,7 +274,7 @@ export function ControlPanel({
           >
             {GRID_PRESETS.map((preset) => (
               <option key={preset.id} value={preset.id}>
-                {preset.label} ({formatRecommendedGrid(preset.recommendedGrid)})
+                {preset.label} ({formatRecommendedGrid(preset.recommendedGrid)} covers)
               </option>
             ))}
           </select>
@@ -264,7 +283,7 @@ export function ControlPanel({
         <div className="control-field">
           <div className="control-field__label-row">
             <label className="control-field__label" htmlFor="spacing">
-              Gap
+              Spacing
             </label>
             <span className="control-field__value">{settings.spacing}px</span>
           </div>
@@ -283,16 +302,20 @@ export function ControlPanel({
 
         <div className="control-field">
           <label className="control-field__label" htmlFor="background-color">
-            Background color
+            Background
           </label>
-          <input
-            id="background-color"
-            className="control-field__input"
-            type="color"
-            value={settings.backgroundColor}
-            disabled={disabled}
-            onChange={(event) => update('backgroundColor', event.target.value)}
-          />
+          <div className="control-field__color-row">
+            <input
+              id="background-color"
+              className="control-field__color"
+              type="color"
+              value={settings.backgroundColor}
+              disabled={disabled}
+              onChange={(event) => update('backgroundColor', event.target.value)}
+            />
+            <span className="control-field__value">{settings.backgroundColor.toUpperCase()}</span>
+          </div>
+          <p className="control-field__hint">Shows in the spacing and any empty cells.</p>
         </div>
       </div>
 
@@ -305,8 +328,6 @@ export function ControlPanel({
       ) : null}
 
       <div className="controls-panel__section">
-        <h3 className="controls-panel__section-title">Albums</h3>
-
         <div className="control-field">
           <label className="control-field__label" htmlFor="order">
             Order
@@ -327,41 +348,48 @@ export function ControlPanel({
         </div>
 
         <div className="control-toggle">
-          <span className="control-toggle__label">One album per artist</span>
+          <span className="control-toggle__text">
+            <span className="control-toggle__label">Artist duplicates</span>
+            <span className="control-toggle__hint">Let one artist appear more than once.</span>
+          </span>
           <button
             type="button"
             role="switch"
             className="control-toggle__switch"
-            data-checked={settings.oneAlbumPerArtist}
-            aria-checked={settings.oneAlbumPerArtist}
+            data-checked={allowArtistDuplicates}
+            aria-checked={allowArtistDuplicates}
             disabled={disabled}
             onClick={() => update('oneAlbumPerArtist', !settings.oneAlbumPerArtist)}
           >
             <span className="control-toggle__thumb" />
-            <span className="sr-only">One album per artist</span>
+            <span className="sr-only">Allow artist duplicates</span>
           </button>
         </div>
 
         <button
           type="button"
-          className="export-button"
-          disabled={disabled || availableAlbumCount === 0}
-          onClick={handleShuffleLayout}
+          className="control-button"
+          disabled={disabled || settings.order !== 'random' || availableAlbumCount === 0}
+          title="Generate a new shuffled order"
+          aria-label="Reshuffle album covers"
+          onClick={onReshuffle}
         >
           <Shuffle size={16} aria-hidden="true" />
-          {settings.order === 'random' ? 'Regenerate shuffle' : 'Shuffle layout'}
+          Reshuffle
         </button>
-
-        {settings.order === 'rank' ? (
-          <p className="controls-panel__hint">Shuffles the current albums and switches order to Shuffled.</p>
-        ) : null}
       </div>
 
       <div className="controls-panel__section">
         <h3 className="controls-panel__section-title">Export</h3>
 
+        {exportPreset ? (
+          <p className="controls-panel__export-meta">
+            Saves a {exportPreset.width} × {exportPreset.height} px {exportPreset.label.toLowerCase()}.
+          </p>
+        ) : null}
+
         {showPosterPdfHint ? (
-          <p className="controls-panel__hint">
+          <p className="control-field__hint">
             Large poster exports are most reliable as PNG. PDF may downscale the image to fit browser
             limits.
           </p>
@@ -369,12 +397,12 @@ export function ControlPanel({
 
         <button
           type="button"
-          className="export-button export-button--primary"
-          disabled={disabled || isExporting || orderedAlbums.length === 0}
+          className="control-button control-button--primary"
+          disabled={!canExport}
           onClick={() => void handleExport('png')}
         >
           {exportingFormat === 'png' ? (
-            <LoaderCircle className="export-button__spinner" size={16} aria-hidden="true" />
+            <LoaderCircle className="control-button__spinner" size={16} aria-hidden="true" />
           ) : (
             <FileImage size={16} aria-hidden="true" />
           )}
@@ -383,12 +411,12 @@ export function ControlPanel({
 
         <button
           type="button"
-          className="export-button"
-          disabled={disabled || isExporting || orderedAlbums.length === 0}
+          className="control-button"
+          disabled={!canExport}
           onClick={() => void handleExport('pdf')}
         >
           {exportingFormat === 'pdf' ? (
-            <LoaderCircle className="export-button__spinner" size={16} aria-hidden="true" />
+            <LoaderCircle className="control-button__spinner" size={16} aria-hidden="true" />
           ) : (
             <Download size={16} aria-hidden="true" />
           )}
@@ -410,7 +438,7 @@ export function ControlPanel({
         {onRetryTracks && isConnected && tracksError ? (
           <button
             type="button"
-            className="export-button export-button--ghost"
+            className="control-button control-button--ghost"
             disabled={isExporting}
             onClick={onRetryTracks}
           >
@@ -419,12 +447,22 @@ export function ControlPanel({
         ) : null}
       </div>
 
-      <div className="controls-panel__section">
-        <h3 className="controls-panel__section-title">Account</h3>
-
+      <div className="controls-panel__section controls-panel__section--account">
         <button
           type="button"
-          className="export-button export-button--ghost"
+          className="control-button control-button--ghost"
+          disabled={disabled}
+          onClick={onResetSettings}
+        >
+          <RotateCcw size={16} aria-hidden="true" />
+          Reset settings
+        </button>
+        <p className="control-field__hint">
+          Clears saved layout preferences from this browser. Spotify data is never stored here.
+        </p>
+        <button
+          type="button"
+          className="control-button control-button--ghost"
           disabled={!isConnected}
           onClick={onLogout}
         >

@@ -5,13 +5,13 @@ import { orderAlbums } from './orderAlbums'
 function createAlbum(
   albumId: string,
   score: number,
-  albumName = albumId,
+  albumName = `Album ${albumId}`,
 ): AlbumCandidate {
   return {
     albumId,
     albumName,
     artistId: `artist-${albumId}`,
-    artistName: 'Artist',
+    artistName: `Artist ${albumId}`,
     imageUrl: `https://example.com/${albumId}.jpg`,
     spotifyUrl: `https://open.spotify.com/album/${albumId}`,
     score,
@@ -28,9 +28,11 @@ describe('orderAlbums', () => {
       createAlbum('mid', 30),
     ]
 
-    const ordered = orderAlbums(albums, 'rank')
-
-    expect(ordered.map((album) => album.albumId)).toEqual(['high', 'mid', 'low'])
+    expect(orderAlbums(albums, 'rank').map((album) => album.albumId)).toEqual([
+      'high',
+      'mid',
+      'low',
+    ])
   })
 
   it('breaks score ties by album name', () => {
@@ -39,9 +41,10 @@ describe('orderAlbums', () => {
       createAlbum('a-album', 40, 'Alpha'),
     ]
 
-    const ordered = orderAlbums(albums, 'rank')
-
-    expect(ordered.map((album) => album.albumId)).toEqual(['a-album', 'b-album'])
+    expect(orderAlbums(albums, 'rank').map((album) => album.albumId)).toEqual([
+      'a-album',
+      'b-album',
+    ])
   })
 
   it('does not mutate the input array', () => {
@@ -52,22 +55,21 @@ describe('orderAlbums', () => {
     expect(albums.map((album) => album.albumId)).toEqual(['one', 'two'])
   })
 
-  it('produces deterministic shuffle output for the same seed', () => {
+  it('returns the same shuffled order for the same seed', () => {
     const albums = [
-      createAlbum('a', 10),
-      createAlbum('b', 20),
       createAlbum('c', 30),
-      createAlbum('d', 40),
+      createAlbum('a', 50),
+      createAlbum('b', 40),
+      createAlbum('d', 10),
     ]
 
-    const first = orderAlbums(albums, 'random', 7)
-    const second = orderAlbums(albums, 'random', 7)
+    const first = orderAlbums(albums, 'random', 42).map((album) => album.albumId)
+    const second = orderAlbums(albums, 'random', 42).map((album) => album.albumId)
 
-    expect(first.map((album) => album.albumId)).toEqual(second.map((album) => album.albumId))
-    expect(first.map((album) => album.albumId)).not.toEqual(['a', 'b', 'c', 'd'])
+    expect(first).toEqual(second)
   })
 
-  it('changes shuffle output when the seed changes', () => {
+  it('returns a different shuffled order when the seed changes', () => {
     const albums = [
       createAlbum('a', 10),
       createAlbum('b', 20),
@@ -80,5 +82,20 @@ describe('orderAlbums', () => {
     const seedTwo = orderAlbums(albums, 'random', 2).map((album) => album.albumId)
 
     expect(seedOne).not.toEqual(seedTwo)
+  })
+
+  it('ignores the incoming array order when shuffling', () => {
+    const albums = [
+      createAlbum('c', 30),
+      createAlbum('a', 50),
+      createAlbum('b', 40),
+      createAlbum('d', 10),
+    ]
+    const reversed = [...albums].reverse()
+
+    const shuffled = orderAlbums(reversed, 'random', 7).map((album) => album.albumId)
+    const shuffledAgain = orderAlbums(albums, 'random', 7).map((album) => album.albumId)
+
+    expect(shuffled).toEqual(shuffledAgain)
   })
 })

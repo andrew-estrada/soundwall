@@ -1,10 +1,20 @@
 import type { AlbumCandidate, CollageOrder } from '../types'
 
+function sortByRank(albums: AlbumCandidate[]): AlbumCandidate[] {
+  return [...albums].sort((left, right) => {
+    if (right.score !== left.score) {
+      return right.score - left.score
+    }
+
+    return left.albumName.localeCompare(right.albumName, undefined, {
+      sensitivity: 'base',
+    })
+  })
+}
+
 function shuffleAlbums(albums: AlbumCandidate[], shuffleSeed: number): AlbumCandidate[] {
-  const result = [...albums]
-  let seed =
-    shuffleSeed +
-    result.reduce((accumulator, album) => accumulator + album.albumId.length, 0)
+  const result = sortByRank(albums)
+  let seed = shuffleSeed
 
   for (let index = result.length - 1; index > 0; index -= 1) {
     seed = (seed * 9301 + 49297) % 233280
@@ -25,14 +35,6 @@ export function orderAlbums(
       return shuffleAlbums(albums, shuffleSeed)
     case 'rank':
     default:
-      return [...albums].sort((left, right) => {
-        if (right.score !== left.score) {
-          return right.score - left.score
-        }
-
-        return left.albumName.localeCompare(right.albumName, undefined, {
-          sensitivity: 'base',
-        })
-      })
+      return sortByRank(albums)
   }
 }

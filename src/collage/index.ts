@@ -1,4 +1,13 @@
+export { buildVisibleAlbums, getRemovedAlbumIds } from './buildVisibleAlbums'
 export { DEFAULT_COLLAGE_SETTINGS } from './constants'
+export {
+  ALBUM_COUNT_OPTIONS,
+  formatAlbumCountGridHint,
+  getEffectiveAlbumLimit,
+  getTightestGridPresetForAlbumCount,
+  isValidAlbumCount,
+} from './albumCount'
+export type { AlbumCountOption } from './albumCount'
 export { scoreAlbumsFromTracks } from './albumScoring'
 export {
   calculateGridLayout,

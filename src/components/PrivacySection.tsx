@@ -7,8 +7,10 @@ export function PrivacySection() {
       <ul className="privacy-section__list">
         <li>Soundwall runs locally in your browser.</li>
         <li>Your Spotify data is used only to generate the collage.</li>
+        <li>Layout preferences (size, grid, spacing, colors) are saved in localStorage on this device.</li>
+        <li>Spotify tokens stay in sessionStorage and clear when you log out or close the tab.</li>
+        <li>Listening data and album lists are never saved between sessions.</li>
         <li>No database, no account, no server upload.</li>
-        <li>You can log out anytime to clear the local token.</li>
       </ul>
       <p className="privacy-section__footer">
         Setup: create a Spotify Developer app, add the redirect URI from the README, and set{' '}

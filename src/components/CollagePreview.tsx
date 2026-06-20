@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { AlertCircle, Disc3 } from 'lucide-react'
+import { AlertCircle, Disc3, LoaderCircle, X } from 'lucide-react'
 import type { AlbumCandidate, CollageSettings } from '../types'
 
 interface CollagePreviewProps {
@@ -10,6 +10,8 @@ interface CollagePreviewProps {
   tracksError?: string | null
   trackCount?: number
   availableAlbumCount?: number
+  disabled?: boolean
+  onRemoveAlbum?: (album: AlbumCandidate) => void
   onRetry?: () => void
   onReconnect?: () => void
 }
@@ -22,11 +24,14 @@ export function CollagePreview({
   tracksError = null,
   trackCount = 0,
   availableAlbumCount = 0,
+  disabled = false,
+  onRemoveAlbum,
   onRetry,
   onReconnect,
 }: CollagePreviewProps) {
   const { gridCols, gridRows, spacing, backgroundColor, oneAlbumPerArtist } = settings
   const cellCount = gridCols * gridRows
+  const canRemove = Boolean(onRemoveAlbum) && !disabled && !isLoadingTracks
 
   const gridStyle = {
     '--preview-cols': gridCols,
@@ -41,10 +46,8 @@ export function CollagePreview({
   function renderEmptyAlbumState() {
     return (
       <div className="collage-preview__empty">
-        <Disc3 className="collage-preview__empty-icon" size={40} aria-hidden="true" />
-        <p className="collage-preview__empty-text">
-          Could not build a collage from your top tracks yet.
-        </p>
+        <Disc3 className="collage-preview__empty-icon" size={44} aria-hidden="true" />
+        <p className="collage-preview__empty-title">Not enough album art yet</p>
         <ul className="collage-preview__empty-list">
           {trackCount === 0 ? (
             <li>
@@ -59,9 +62,7 @@ export function CollagePreview({
           )}
           <li>Tracks without album artwork are skipped.</li>
           {oneAlbumPerArtist ? (
-            <li>
-              One album per artist is on — turn it off in controls if you need more covers.
-            </li>
+            <li>One album per artist is on — turn it off in controls if you need more covers.</li>
           ) : null}
         </ul>
       </div>
@@ -102,6 +103,18 @@ export function CollagePreview({
             decoding="async"
             draggable={false}
           />
+          {canRemove ? (
+            <button
+              type="button"
+              className="collage-preview__cell-remove"
+              title="Remove from collage"
+              aria-label={`Remove ${album.albumName} by ${album.artistName} from collage`}
+              onClick={() => onRemoveAlbum?.(album)}
+            >
+              <X size={14} aria-hidden="true" />
+              <span className="sr-only">Remove from collage</span>
+            </button>
+          ) : null}
         </div>
       )
     })
@@ -111,9 +124,10 @@ export function CollagePreview({
     if (!isConnected) {
       return (
         <div className="collage-preview__empty">
-          <Disc3 className="collage-preview__empty-icon" size={40} aria-hidden="true" />
+          <Disc3 className="collage-preview__empty-icon" size={44} aria-hidden="true" />
+          <p className="collage-preview__empty-title">Your collage will appear here</p>
           <p className="collage-preview__empty-text">
-            Your album collage will appear here after you connect Spotify.
+            Connect Spotify to fill the wall with your most-played album covers.
           </p>
         </div>
       )
@@ -121,8 +135,21 @@ export function CollagePreview({
 
     if (isLoadingTracks) {
       return (
-        <div className="collage-preview__grid collage-preview__grid--loading" style={gridStyle}>
-          {renderGridCells('loading')}
+        <div className="collage-preview__loading">
+          <div
+            className="collage-preview__grid collage-preview__grid--loading"
+            style={gridStyle}
+          >
+            {renderGridCells('loading')}
+          </div>
+          <p className="collage-preview__loading-caption">
+            <LoaderCircle
+              className="collage-preview__loading-spinner"
+              size={16}
+              aria-hidden="true"
+            />
+            Building your collage from your top albums…
+          </p>
         </div>
       )
     }
@@ -131,16 +158,17 @@ export function CollagePreview({
       const isSessionError = /expired|connect again/i.test(tracksError)
 
       return (
-        <div className="collage-preview__empty collage-preview__empty--error">
-          <AlertCircle className="collage-preview__empty-icon" size={36} aria-hidden="true" />
+        <div className="collage-preview__empty collage-preview__empty--error" role="alert">
+          <AlertCircle className="collage-preview__empty-icon" size={40} aria-hidden="true" />
+          <p className="collage-preview__empty-title">We couldn’t load your music</p>
           <p className="collage-preview__empty-text">{tracksError}</p>
           {isSessionError && onReconnect ? (
-            <button type="button" className="connect-button" onClick={onReconnect}>
+            <button type="button" className="control-button" onClick={onReconnect}>
               Connect Spotify again
             </button>
           ) : null}
           {!isSessionError && onRetry ? (
-            <button type="button" className="export-button" onClick={onRetry}>
+            <button type="button" className="control-button" onClick={onRetry}>
               Try again
             </button>
           ) : null}
@@ -161,8 +189,6 @@ export function CollagePreview({
 
   return (
     <section className="collage-preview" aria-label="Collage preview">
-      <h2 className="collage-preview__label">Preview</h2>
-
       <div className="collage-preview__frame">{renderContent()}</div>
     </section>
   )
