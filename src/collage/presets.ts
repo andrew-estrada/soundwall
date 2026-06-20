@@ -71,6 +71,14 @@ export const GRID_PRESETS: CollagePreset[] = [
     category: 'grid',
   },
   {
+    id: 'grid-6x10',
+    label: '6 × 10',
+    width: 1290,
+    height: 2796,
+    recommendedGrid: { cols: 6, rows: 10 },
+    category: 'grid',
+  },
+  {
     id: 'grid-8x10',
     label: '8 × 10',
     width: 3200,
@@ -79,11 +87,35 @@ export const GRID_PRESETS: CollagePreset[] = [
     category: 'grid',
   },
   {
+    id: 'grid-10x6',
+    label: '10 × 6',
+    width: 3840,
+    height: 2160,
+    recommendedGrid: { cols: 10, rows: 6 },
+    category: 'grid',
+  },
+  {
     id: 'grid-10x10',
     label: '10 × 10',
     width: 4000,
     height: 4000,
     recommendedGrid: { cols: 10, rows: 10 },
+    category: 'grid',
+  },
+  {
+    id: 'grid-9x12',
+    label: '9 × 12',
+    width: 5400,
+    height: 7200,
+    recommendedGrid: { cols: 9, rows: 12 },
+    category: 'grid',
+  },
+  {
+    id: 'grid-10x12',
+    label: '10 × 12',
+    width: 7200,
+    height: 10800,
+    recommendedGrid: { cols: 10, rows: 12 },
     category: 'grid',
   },
 ]
@@ -96,6 +128,20 @@ export function formatRecommendedGrid(grid: RecommendedGrid): string {
 
 export function findCollagePreset(id: string): CollagePreset | undefined {
   return COLLAGE_PRESETS.find((preset) => preset.id === id)
+}
+
+export function findGridPresetByDimensions(
+  cols: number,
+  rows: number,
+): CollagePreset | undefined {
+  return GRID_PRESETS.find(
+    (preset) =>
+      preset.recommendedGrid.cols === cols && preset.recommendedGrid.rows === rows,
+  )
+}
+
+export function gridsMatch(left: RecommendedGrid, right: RecommendedGrid): boolean {
+  return left.cols === right.cols && left.rows === right.rows
 }
 
 export function getPresetsByCategory(category: CollagePresetCategory): CollagePreset[] {

@@ -4,6 +4,8 @@ import {
   buildExportFilename,
   canvasToDataUrl,
   CollageExportError,
+  downscaleCanvasForEmbed,
+  getPdfPageSizeInches,
   prepareCollageExport,
 } from './exportCollage'
 
@@ -20,6 +22,7 @@ export interface ExportCollagePdfOptions {
 export interface ExportCollagePdfResult {
   filename: string
   failedImageCount: number
+  downscaled: boolean
 }
 
 export async function exportCollagePdf(
@@ -28,10 +31,10 @@ export async function exportCollagePdf(
   const { settings } = options
   const { canvas, failedImageCount } = await prepareCollageExport(options)
   const filename = buildExportFilename(settings, 'pdf')
-  const imageData = canvasToDataUrl(canvas)
-
-  const pageWidthInches = settings.exportWidth / 300
-  const pageHeightInches = settings.exportHeight / 300
+  const embedCanvas = downscaleCanvasForEmbed(canvas)
+  const downscaled = embedCanvas !== canvas
+  const imageData = canvasToDataUrl(embedCanvas)
+  const { width: pageWidthInches, height: pageHeightInches } = getPdfPageSizeInches(settings)
 
   let pdf: jsPDF
 
@@ -51,9 +54,9 @@ export async function exportCollagePdf(
     pdf.save(filename)
   } catch {
     throw new CollageExportError(
-      'Failed to add the collage image to the PDF. Try a smaller export preset.',
+      'Failed to add the collage image to the PDF. Try PNG export or a smaller export preset.',
     )
   }
 
-  return { filename, failedImageCount }
+  return { filename, failedImageCount, downscaled }
 }

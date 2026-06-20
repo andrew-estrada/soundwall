@@ -21,14 +21,18 @@ export function orderAlbums(
   shuffleSeed = 0,
 ): AlbumCandidate[] {
   switch (order) {
-    case 'artist':
-      return [...albums].sort((left, right) =>
-        left.artistName.localeCompare(right.artistName, undefined, { sensitivity: 'base' }),
-      )
     case 'random':
       return shuffleAlbums(albums, shuffleSeed)
     case 'rank':
     default:
-      return [...albums].sort((left, right) => right.score - left.score)
+      return [...albums].sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score
+        }
+
+        return left.albumName.localeCompare(right.albumName, undefined, {
+          sensitivity: 'base',
+        })
+      })
   }
 }

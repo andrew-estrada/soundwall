@@ -1,7 +1,7 @@
 import type { AuthState } from '../types'
 import { AuthError, getAuthErrorMessage, getSpotifyAuthErrorMessage, toAuthErrorMessage } from './errors'
 import { clearPkceSession, getSessionItem, AUTH_STORAGE_KEYS } from './storage'
-import { exchangeAuthorizationCode } from './token'
+import { exchangeAuthorizationCode, isAuthenticated } from './token'
 
 export async function handleOAuthCallback(searchParams: URLSearchParams): Promise<AuthState> {
   const spotifyError = searchParams.get('error')
@@ -12,6 +12,11 @@ export async function handleOAuthCallback(searchParams: URLSearchParams): Promis
       status: 'error',
       error: getSpotifyAuthErrorMessage(spotifyError, searchParams.get('error_description')),
     }
+  }
+
+  if (isAuthenticated()) {
+    clearPkceSession()
+    return { status: 'connected' }
   }
 
   const code = searchParams.get('code')
