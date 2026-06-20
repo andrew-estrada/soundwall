@@ -1,4 +1,6 @@
+export { applyAlbumReplacements, slotsToAlbums } from './applyAlbumReplacements'
 export { buildVisibleAlbums, getRemovedAlbumIds } from './buildVisibleAlbums'
+export type { AlbumReplacements } from '../types/collage'
 export { DEFAULT_COLLAGE_SETTINGS } from './constants'
 export {
   ALBUM_COUNT_OPTIONS,
@@ -36,7 +38,28 @@ export { exportCollagePng, formatExportMessage } from './exportPng'
 export type { ExportCollagePngOptions, ExportCollagePngResult } from './exportPng'
 export { exportCollagePdf } from './exportPdf'
 export type { ExportCollagePdfOptions, ExportCollagePdfResult } from './exportPdf'
+export {
+  BACKGROUND_PRESETS,
+  colorsMatch,
+  findBackgroundPreset,
+} from './backgroundPresets'
+export type { BackgroundPreset } from './backgroundPresets'
 export { orderAlbums } from './orderAlbums'
+export {
+  CORNER_RADIUS_MAX,
+  BORDER_WIDTH_MAX,
+  PREVIEW_REFERENCE_CELL_SIZE,
+  resolveAlbumAppearance,
+  resolvePreviewAlbumAppearance,
+} from './albumAppearance'
+export {
+  applyManualOrder,
+  hasSameSlotOrder,
+  removeSlotFromOrder,
+  reorderSlots,
+  slotsToOrder,
+} from './reorderAlbumSlots'
+export type { CollageOrderSource } from './reorderAlbumSlots'
 export {
   COLLAGE_PRESETS,
   EXPORT_SIZE_PRESETS,

@@ -1,3 +1,4 @@
+export { AlbumEditorPanel } from './AlbumEditorPanel'
 export { AppShell } from './AppShell'
 export { AuthErrorBanner } from './AuthErrorBanner'
 export { CollagePreview } from './CollagePreview'

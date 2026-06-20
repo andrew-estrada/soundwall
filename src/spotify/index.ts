@@ -1,3 +1,5 @@
 export { SpotifyApiError, spotifyFetch } from './client'
+export { searchSpotifyAlbums, searchResultToAlbumCandidate, parseReleaseYear } from './searchAlbums'
+export type { SpotifySearchAlbum } from './searchAlbums'
 export { fetchTopTracks } from './topTracks'
 export { useTopTracks } from './useTopTracks'

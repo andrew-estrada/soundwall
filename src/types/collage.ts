@@ -26,6 +26,11 @@ export interface CollageSettings {
   albumCount: number
   spacing: number
   backgroundColor: string
+  roundedCorners: boolean
+  cornerRadius: number
+  borderEnabled: boolean
+  borderWidth: number
+  borderColor: string
   order: CollageOrder
   oneAlbumPerArtist: boolean
   exportWidth: number
@@ -43,6 +48,13 @@ export interface AlbumCandidate {
   sourceTrackNames: string[]
   sourceTimeRanges: SpotifyTimeRange[]
 }
+
+export interface CollageAlbumSlot {
+  slotAlbumId: string
+  album: AlbumCandidate
+}
+
+export type AlbumReplacements = Record<string, AlbumCandidate>
 
 export interface ScoreAlbumsOptions {
   gridCols: number

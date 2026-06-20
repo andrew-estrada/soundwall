@@ -1,37 +1,45 @@
-import type { CSSProperties } from 'react'
-import { AlertCircle, Disc3, LoaderCircle, X } from 'lucide-react'
-import type { AlbumCandidate, CollageSettings } from '../types'
+import { useState, type CSSProperties, type DragEvent } from 'react'
+import { resolvePreviewAlbumAppearance } from '../collage/albumAppearance'
+import { AlertCircle, Disc3, GripVertical, LoaderCircle } from 'lucide-react'
+import type { CollageAlbumSlot, CollageSettings } from '../types'
 
 interface CollagePreviewProps {
   settings: CollageSettings
-  albums: AlbumCandidate[]
+  albumSlots: CollageAlbumSlot[]
   isConnected: boolean
   isLoadingTracks?: boolean
   tracksError?: string | null
   trackCount?: number
   availableAlbumCount?: number
   disabled?: boolean
-  onRemoveAlbum?: (album: AlbumCandidate) => void
+  onSelectAlbum?: (slot: CollageAlbumSlot) => void
+  onReorder?: (fromIndex: number, toIndex: number) => void
   onRetry?: () => void
   onReconnect?: () => void
 }
 
 export function CollagePreview({
   settings,
-  albums,
+  albumSlots,
   isConnected,
   isLoadingTracks = false,
   tracksError = null,
   trackCount = 0,
   availableAlbumCount = 0,
   disabled = false,
-  onRemoveAlbum,
+  onSelectAlbum,
+  onReorder,
   onRetry,
   onReconnect,
 }: CollagePreviewProps) {
   const { gridCols, gridRows, spacing, backgroundColor, oneAlbumPerArtist } = settings
   const cellCount = gridCols * gridRows
-  const canRemove = Boolean(onRemoveAlbum) && !disabled && !isLoadingTracks
+  const canEdit = Boolean(onSelectAlbum) && !disabled && !isLoadingTracks
+  const canReorder = Boolean(onReorder) && !disabled && !isLoadingTracks && albumSlots.length > 1
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const [reorderMessage, setReorderMessage] = useState<string | null>(null)
+  const coverAppearance = resolvePreviewAlbumAppearance(settings)
 
   const gridStyle = {
     '--preview-cols': gridCols,
@@ -39,9 +47,67 @@ export function CollagePreview({
     '--preview-gap': `${spacing}px`,
     '--preview-bg': backgroundColor,
     '--preview-aspect': `${gridCols} / ${gridRows}`,
+    '--preview-cover-radius': `${coverAppearance.cornerRadius}px`,
+    '--preview-cover-border-width': `${coverAppearance.borderWidth}px`,
+    '--preview-cover-border-color': coverAppearance.borderColor,
     gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
     gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
   } as CSSProperties
+
+  function clearDragState() {
+    setDragIndex(null)
+    setDropIndex(null)
+  }
+
+  function handleDragStart(event: DragEvent<HTMLButtonElement>, index: number, label: string) {
+    setDragIndex(index)
+    setDropIndex(index)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', String(index))
+    event.dataTransfer.setData('application/x-soundwall-slot', String(index))
+
+    const cover = event.currentTarget.closest('.collage-preview__cell')?.querySelector('img')
+
+    if (cover instanceof HTMLImageElement) {
+      event.dataTransfer.setDragImage(cover, cover.width / 2, cover.height / 2)
+    }
+
+    setReorderMessage(`Dragging ${label}`)
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>, index: number) {
+    if (dragIndex === null) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+
+    if (dropIndex !== index) {
+      setDropIndex(index)
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>, index: number) {
+    event.preventDefault()
+
+    if (dragIndex === null || dragIndex === index) {
+      clearDragState()
+      return
+    }
+
+    const movedSlot = albumSlots[dragIndex]
+
+    onReorder?.(dragIndex, index)
+
+    if (movedSlot) {
+      setReorderMessage(
+        `Moved ${movedSlot.album.albumName} to position ${index + 1}`,
+      )
+    }
+
+    clearDragState()
+  }
 
   function renderEmptyAlbumState() {
     return (
@@ -71,7 +137,7 @@ export function CollagePreview({
 
   function renderGridCells(mode: 'loading' | 'albums') {
     return Array.from({ length: cellCount }, (_, index) => {
-      const album = mode === 'albums' ? albums[index] : null
+      const slot = mode === 'albums' ? albumSlots[index] : null
 
       if (mode === 'loading') {
         return (
@@ -83,7 +149,7 @@ export function CollagePreview({
         )
       }
 
-      if (!album) {
+      if (!slot) {
         return (
           <div
             key={`empty-${index}`}
@@ -93,28 +159,66 @@ export function CollagePreview({
         )
       }
 
+      const { album } = slot
+      const isDragging = dragIndex === index
+      const isDropTarget = dropIndex === index && dragIndex !== null && dragIndex !== index
+      const cellClassName = [
+        'collage-preview__cell',
+        isDragging ? 'collage-preview__cell--dragging' : '',
+        isDropTarget ? 'collage-preview__cell--drop-target' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')
+
       return (
-        <div key={album.albumId} className="collage-preview__cell">
-          <img
-            className="collage-preview__cover"
-            src={album.imageUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-          />
-          {canRemove ? (
+        <div
+          key={slot.slotAlbumId}
+          className={cellClassName}
+          onDragOver={canReorder ? (event) => handleDragOver(event, index) : undefined}
+          onDrop={canReorder ? (event) => handleDrop(event, index) : undefined}
+        >
+          {canReorder ? (
             <button
               type="button"
-              className="collage-preview__cell-remove"
-              title="Remove from collage"
-              aria-label={`Remove ${album.albumName} by ${album.artistName} from collage`}
-              onClick={() => onRemoveAlbum?.(album)}
+              className="collage-preview__drag-handle"
+              draggable
+              aria-label={`Drag to reorder ${album.albumName} by ${album.artistName}`}
+              title={`Drag to reorder ${album.albumName}`}
+              onDragStart={(event) =>
+                handleDragStart(event, index, `${album.albumName} by ${album.artistName}`)
+              }
+              onDragEnd={clearDragState}
             >
-              <X size={14} aria-hidden="true" />
-              <span className="sr-only">Remove from collage</span>
+              <GripVertical size={14} aria-hidden="true" />
             </button>
           ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className="collage-preview__cell-button"
+              title={`Edit ${album.albumName}`}
+              aria-label={`Edit ${album.albumName} by ${album.artistName}`}
+              onClick={() => onSelectAlbum?.(slot)}
+            >
+              <img
+                className="collage-preview__cover"
+                src={album.imageUrl}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+              />
+            </button>
+          ) : (
+            <img
+              className="collage-preview__cover"
+              src={album.imageUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+            />
+          )}
         </div>
       )
     })
@@ -176,7 +280,7 @@ export function CollagePreview({
       )
     }
 
-    if (albums.length === 0) {
+    if (albumSlots.length === 0) {
       return renderEmptyAlbumState()
     }
 
@@ -189,6 +293,11 @@ export function CollagePreview({
 
   return (
     <section className="collage-preview" aria-label="Collage preview">
+      {canReorder ? (
+        <p className="sr-only" aria-live="polite">
+          {reorderMessage}
+        </p>
+      ) : null}
       <div className="collage-preview__frame">{renderContent()}</div>
     </section>
   )

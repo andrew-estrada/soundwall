@@ -1,4 +1,8 @@
 import type { AlbumCandidate, CollageSettings } from '../types'
+import {
+  drawAlbumCoverCell,
+  resolveAlbumAppearance,
+} from './albumAppearance'
 
 export interface DrawCollageOptions {
   albums: AlbumCandidate[]
@@ -109,8 +113,18 @@ export function drawCollage(options: DrawCollageOptions): HTMLCanvasElement {
     const col = index % gridCols
     const row = Math.floor(index / gridCols)
     const { x, y } = getCellPosition(layout, col, row)
+    const appearance = resolveAlbumAppearance(settings, layout.cellWidth, layout.cellHeight)
 
-    drawCoverImage(context, image, x, y, layout.cellWidth, layout.cellHeight)
+    drawAlbumCoverCell(
+      context,
+      image,
+      x,
+      y,
+      layout.cellWidth,
+      layout.cellHeight,
+      appearance,
+      drawCoverImage,
+    )
   }
 
   return canvas

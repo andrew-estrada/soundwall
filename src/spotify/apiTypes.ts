@@ -21,6 +21,13 @@ export interface SpotifyApiAlbum {
   images: SpotifyApiImage[]
   external_urls: SpotifyApiExternalUrls
   artists: SpotifyApiArtist[]
+  release_date?: string
+}
+
+export interface SpotifyApiSearchAlbumsResponse {
+  albums: {
+    items: SpotifyApiAlbum[]
+  }
 }
 
 export interface SpotifyApiTrack {

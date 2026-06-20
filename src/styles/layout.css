@@ -439,12 +439,60 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: var(--preview-cover-radius, 0);
   background: transparent;
 }
 
 .collage-preview__cell--empty {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.collage-preview__cell--dragging {
+  opacity: 0.45;
+}
+
+.collage-preview__cell--drop-target {
+  box-shadow: inset 0 0 0 2px var(--color-accent-border);
+}
+
+.collage-preview__drag-handle {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.collage-preview__cell:hover .collage-preview__drag-handle,
+.collage-preview__cell:focus-within .collage-preview__drag-handle,
+.collage-preview__cell--dragging .collage-preview__drag-handle {
+  opacity: 1;
+}
+
+.collage-preview__drag-handle:hover {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.collage-preview__drag-handle:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--color-accent-border);
+  outline-offset: 1px;
+}
+
+.collage-preview__drag-handle:active {
+  cursor: grabbing;
 }
 
 .collage-preview__cell--loading {
@@ -483,44 +531,32 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  box-sizing: border-box;
+  border-radius: var(--preview-cover-radius, 0);
+  border: var(--preview-cover-border-width, 0) solid var(--preview-cover-border-color, transparent);
 }
 
-.collage-preview__cell-remove {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
+.collage-preview__cell-button {
+  display: block;
+  width: 100%;
+  height: 100%;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
+  border: 0;
+  background: transparent;
   cursor: pointer;
-  opacity: 0;
-  transition:
-    opacity 0.15s ease,
-    background 0.15s ease,
-    transform 0.15s ease;
+  overflow: hidden;
+  border-radius: var(--preview-cover-radius, 0);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.collage-preview__cell:hover .collage-preview__cell-remove,
-.collage-preview__cell:focus-within .collage-preview__cell-remove,
-.collage-preview__cell-remove:focus-visible {
-  opacity: 1;
+.collage-preview__cell-button:hover:not(:disabled),
+.collage-preview__cell-button:focus-visible {
+  transform: scale(1.02);
+  box-shadow: 0 0 0 2px var(--color-accent-border);
 }
 
-.collage-preview__cell-remove:hover:not(:disabled) {
-  background: rgba(180, 30, 30, 0.92);
-  transform: scale(1.04);
-}
-
-.collage-preview__cell-remove:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+.collage-preview__cell-button:focus-visible {
+  outline: none;
 }
 
 .collage-preview__empty {
@@ -717,6 +753,42 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   cursor: pointer;
+}
+
+.background-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.background-presets__swatch {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.background-presets__swatch:hover:not(:disabled) {
+  transform: scale(1.06);
+}
+
+.background-presets__swatch[data-selected='true'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-border);
+}
+
+.background-presets__swatch:focus-visible {
+  outline: 2px solid var(--color-accent-border);
+  outline-offset: 2px;
+}
+
+.background-presets__swatch:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .control-toggle {
@@ -995,4 +1067,242 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--color-text-muted);
+}
+
+/* Album editor dialog */
+
+.album-editor {
+  width: min(100vw - 32px, 420px);
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-panel);
+}
+
+.album-editor::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.album-editor__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: calc(100vh - 32px);
+  padding: 18px;
+}
+
+.album-editor__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.album-editor__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.album-editor__subtitle {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.album-editor__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.album-editor__close:hover {
+  color: var(--color-text);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.album-editor__current {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.album-editor__current-cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 4px;
+  object-fit: cover;
+  grid-row: span 2;
+}
+
+.album-editor__current-name {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.album-editor__current-artist {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.album-editor__remove {
+  grid-column: 1 / -1;
+}
+
+.album-editor__search-row {
+  position: relative;
+}
+
+.album-editor__search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: var(--color-text-subtle);
+  pointer-events: none;
+}
+
+.album-editor__search-input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.album-editor__search-input:focus {
+  outline: none;
+  border-color: var(--color-accent-border);
+}
+
+.album-editor__hint,
+.album-editor__status {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.album-editor__status,
+.album-editor__error {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.album-editor__error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.album-editor__results {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.album-editor__results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(42vh, 320px);
+  overflow-y: auto;
+}
+
+.album-editor__result {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.album-editor__result:hover:not(:disabled),
+.album-editor__result:focus-visible {
+  border-color: var(--color-accent-border);
+  background: rgba(30, 215, 96, 0.06);
+  outline: none;
+}
+
+.album-editor__result:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.album-editor__result-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.album-editor__result-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.album-editor__result-name,
+.album-editor__result-artist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.album-editor__result-name {
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.album-editor__result-artist {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.album-editor__spinner {
+  animation: collage-preview-spin 0.9s linear infinite;
+  color: var(--color-accent);
 }

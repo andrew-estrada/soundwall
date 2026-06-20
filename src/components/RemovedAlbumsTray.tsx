@@ -20,7 +20,7 @@ export function RemovedAlbumsTray({
 
       {albums.length === 0 ? (
         <p className="removed-albums-tray__empty">
-          Removed covers appear here. Use Remove on any cover in the preview.
+          Removed covers appear here. Click a cover in the preview to remove or replace it.
         </p>
       ) : (
         <ul className="removed-albums-tray__list">
