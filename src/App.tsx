@@ -65,7 +65,21 @@ function App() {
     clearCollageSettings()
     setSettings({ ...DEFAULT_COLLAGE_SETTINGS })
     setShuffleSeed(0)
+    setOrderSource('pipeline')
+    setManualSlotOrder([])
   }
+
+  const handleSettingsChange = useCallback(
+    (next: CollageSettings) => {
+      if (next.order !== settings.order) {
+        setOrderSource('pipeline')
+        setManualSlotOrder([])
+      }
+
+      setSettings(next)
+    },
+    [settings.order],
+  )
 
   const handleLogout = useCallback(() => {
     setRemovedAlbums([])
@@ -82,11 +96,6 @@ function App() {
     setOrderSource('pipeline')
     setManualSlotOrder([])
   }, [])
-
-  useEffect(() => {
-    setOrderSource('pipeline')
-    setManualSlotOrder([])
-  }, [settings.order])
 
   const scoreOptions = useMemo(
     () => ({
@@ -288,7 +297,7 @@ function App() {
           <div className="app-shell__controls-stack">
             <ControlPanel
               settings={settings}
-              onSettingsChange={setSettings}
+              onSettingsChange={handleSettingsChange}
               visibleAlbums={exportAlbums}
               availableAlbumCount={availableAlbums.length}
               isConnected={isConnected}

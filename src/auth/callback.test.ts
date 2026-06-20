@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { handleOAuthCallback } from './callback'
+import { handleOAuthCallback, resetOAuthCallbackOnce, runOAuthCallbackOnce } from './callback'
 import { getAuthErrorMessage } from './errors'
 import { AUTH_STORAGE_KEYS } from './storage'
 import * as token from './token'
@@ -16,7 +16,9 @@ vi.mock('./token', async (importOriginal) => {
 
 describe('handleOAuthCallback', () => {
   beforeEach(() => {
+    resetOAuthCallbackOnce()
     vi.mocked(token.isAuthenticated).mockReturnValue(false)
+    vi.mocked(token.exchangeAuthorizationCode).mockClear()
     vi.mocked(token.exchangeAuthorizationCode).mockResolvedValue(undefined)
   })
 
@@ -86,5 +88,27 @@ describe('handleOAuthCallback', () => {
 
     expect(token.exchangeAuthorizationCode).toHaveBeenCalledWith('auth-code', 'verifier')
     expect(result).toEqual({ status: 'connected' })
+  })
+})
+
+describe('runOAuthCallbackOnce', () => {
+  beforeEach(() => {
+    resetOAuthCallbackOnce()
+    vi.mocked(token.isAuthenticated).mockReturnValue(false)
+    vi.mocked(token.exchangeAuthorizationCode).mockClear()
+    vi.mocked(token.exchangeAuthorizationCode).mockResolvedValue(undefined)
+  })
+
+  it('reuses the same callback handling promise', async () => {
+    sessionStorage.setItem(AUTH_STORAGE_KEYS.authState, 'stored-state')
+    sessionStorage.setItem(AUTH_STORAGE_KEYS.codeVerifier, 'verifier')
+
+    const params = new URLSearchParams('code=auth-code&state=stored-state')
+    const first = runOAuthCallbackOnce(params)
+    const second = runOAuthCallbackOnce(params)
+
+    expect(first).toBe(second)
+    await expect(first).resolves.toEqual({ status: 'connected' })
+    expect(token.exchangeAuthorizationCode).toHaveBeenCalledTimes(1)
   })
 })

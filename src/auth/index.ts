@@ -1,6 +1,6 @@
 export { CallbackPage } from './CallbackPage'
 export { connectSpotify } from './connect'
-export { handleOAuthCallback } from './callback'
+export { handleOAuthCallback, runOAuthCallbackOnce } from './callback'
 export { AuthError, getAuthErrorMessage } from './errors'
 export {
   disconnectSpotify,

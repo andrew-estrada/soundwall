@@ -39,6 +39,9 @@ export async function exchangeAuthorizationCode(
 
   let response: Response
 
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), 30_000)
+
   try {
     response = await fetch(SPOTIFY_TOKEN_URL, {
       method: 'POST',
@@ -46,12 +49,15 @@ export async function exchangeAuthorizationCode(
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body,
+      signal: controller.signal,
     })
   } catch {
     throw new AuthError(
       'TOKEN_EXCHANGE_FAILURE',
       getAuthErrorMessage('TOKEN_EXCHANGE_FAILURE'),
     )
+  } finally {
+    window.clearTimeout(timeoutId)
   }
 
   if (!response.ok) {
