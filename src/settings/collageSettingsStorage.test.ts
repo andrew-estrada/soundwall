@@ -55,6 +55,11 @@ describe('extractPersistedSettings', () => {
       albumCount: 25,
       spacing: 12,
       backgroundColor: '#121212',
+      roundedCorners: false,
+      cornerRadius: 8,
+      borderEnabled: false,
+      borderWidth: 2,
+      borderColor: '#888888',
       order: 'rank',
       oneAlbumPerArtist: true,
     })

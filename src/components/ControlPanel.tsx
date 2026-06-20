@@ -1,8 +1,12 @@
-import { Download, FileImage, LoaderCircle, LogOut, RotateCcw, Shuffle } from 'lucide-react'
+import { Download, FileImage, ListOrdered, LoaderCircle, LogOut, RotateCcw, Shuffle } from 'lucide-react'
 import { useState } from 'react'
 import {
   ALBUM_COUNT_OPTIONS,
+  BACKGROUND_PRESETS,
+  CORNER_RADIUS_MAX,
+  BORDER_WIDTH_MAX,
   CollageExportError,
+  colorsMatch,
   exportCollagePdf,
   exportCollagePng,
   findGridPresetByDimensions,
@@ -30,6 +34,10 @@ interface ControlPanelProps {
   onLogout: () => void
   onResetSettings: () => void
   onReshuffle: () => void
+  showResetToRanked?: boolean
+  showResetToShuffled?: boolean
+  onResetToRanked?: () => void
+  onResetToShuffled?: () => void
   onRetryTracks?: () => void
   tracksError?: string | null
 }
@@ -55,6 +63,10 @@ export function ControlPanel({
   onLogout,
   onResetSettings,
   onReshuffle,
+  showResetToRanked = false,
+  showResetToShuffled = false,
+  onResetToRanked,
+  onResetToShuffled,
   onRetryTracks,
   tracksError = null,
 }: ControlPanelProps) {
@@ -304,6 +316,26 @@ export function ControlPanel({
           <label className="control-field__label" htmlFor="background-color">
             Background
           </label>
+          <div className="background-presets" role="group" aria-label="Background presets">
+            {BACKGROUND_PRESETS.map((preset) => {
+              const isSelected = colorsMatch(settings.backgroundColor, preset.color)
+
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  className="background-presets__swatch"
+                  style={{ backgroundColor: preset.color }}
+                  title={preset.label}
+                  aria-label={preset.label}
+                  aria-pressed={isSelected}
+                  data-selected={isSelected}
+                  disabled={disabled}
+                  onClick={() => update('backgroundColor', preset.color)}
+                />
+              )
+            })}
+          </div>
           <div className="control-field__color-row">
             <input
               id="background-color"
@@ -326,6 +358,105 @@ export function ControlPanel({
           shape; export uses the selected export dimensions.
         </p>
       ) : null}
+
+      <div className="controls-panel__section">
+        <h3 className="controls-panel__section-title">Appearance</h3>
+
+        <div className="control-toggle">
+          <span className="control-toggle__text">
+            <span className="control-toggle__label">Rounded corners</span>
+            <span className="control-toggle__hint">Soften album cover edges.</span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            className="control-toggle__switch"
+            data-checked={settings.roundedCorners}
+            aria-checked={settings.roundedCorners}
+            disabled={disabled}
+            onClick={() => update('roundedCorners', !settings.roundedCorners)}
+          >
+            <span className="control-toggle__thumb" />
+            <span className="sr-only">Rounded corners</span>
+          </button>
+        </div>
+
+        <div className="control-field">
+          <div className="control-field__label-row">
+            <label className="control-field__label" htmlFor="corner-radius">
+              Corner radius
+            </label>
+            <span className="control-field__value">{settings.cornerRadius}px</span>
+          </div>
+          <input
+            id="corner-radius"
+            className="control-field__input"
+            type="range"
+            min={0}
+            max={CORNER_RADIUS_MAX}
+            step={1}
+            value={settings.cornerRadius}
+            disabled={disabled || !settings.roundedCorners}
+            onChange={(event) => update('cornerRadius', Number(event.target.value))}
+          />
+        </div>
+
+        <div className="control-toggle">
+          <span className="control-toggle__text">
+            <span className="control-toggle__label">Border</span>
+            <span className="control-toggle__hint">Outline each album cover.</span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            className="control-toggle__switch"
+            data-checked={settings.borderEnabled}
+            aria-checked={settings.borderEnabled}
+            disabled={disabled}
+            onClick={() => update('borderEnabled', !settings.borderEnabled)}
+          >
+            <span className="control-toggle__thumb" />
+            <span className="sr-only">Album cover border</span>
+          </button>
+        </div>
+
+        <div className="control-field">
+          <div className="control-field__label-row">
+            <label className="control-field__label" htmlFor="border-width">
+              Border width
+            </label>
+            <span className="control-field__value">{settings.borderWidth}px</span>
+          </div>
+          <input
+            id="border-width"
+            className="control-field__input"
+            type="range"
+            min={1}
+            max={BORDER_WIDTH_MAX}
+            step={1}
+            value={settings.borderWidth}
+            disabled={disabled || !settings.borderEnabled}
+            onChange={(event) => update('borderWidth', Number(event.target.value))}
+          />
+        </div>
+
+        <div className="control-field">
+          <label className="control-field__label" htmlFor="border-color">
+            Border color
+          </label>
+          <div className="control-field__color-row">
+            <input
+              id="border-color"
+              className="control-field__color"
+              type="color"
+              value={settings.borderColor}
+              disabled={disabled || !settings.borderEnabled}
+              onChange={(event) => update('borderColor', event.target.value)}
+            />
+            <span className="control-field__value">{settings.borderColor.toUpperCase()}</span>
+          </div>
+        </div>
+      </div>
 
       <div className="controls-panel__section">
         <div className="control-field">
@@ -377,6 +508,30 @@ export function ControlPanel({
           <Shuffle size={16} aria-hidden="true" />
           Reshuffle
         </button>
+
+        {showResetToRanked && onResetToRanked ? (
+          <button
+            type="button"
+            className="control-button control-button--ghost"
+            disabled={disabled}
+            onClick={onResetToRanked}
+          >
+            <ListOrdered size={16} aria-hidden="true" />
+            Reset to ranked order
+          </button>
+        ) : null}
+
+        {showResetToShuffled && onResetToShuffled ? (
+          <button
+            type="button"
+            className="control-button control-button--ghost"
+            disabled={disabled}
+            onClick={onResetToShuffled}
+          >
+            <Shuffle size={16} aria-hidden="true" />
+            Reset to shuffled order
+          </button>
+        ) : null}
       </div>
 
       <div className="controls-panel__section">

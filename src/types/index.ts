@@ -4,6 +4,8 @@ export type {
 } from './auth'
 export type {
   AlbumCandidate,
+  AlbumReplacements,
+  CollageAlbumSlot,
   CollageOrder,
   CollagePreset,
   CollagePresetCategory,

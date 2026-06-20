@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useAuth } from './auth'
+import { getValidAccessToken, useAuth } from './auth'
 import {
   DEFAULT_COLLAGE_SETTINGS,
+  applyAlbumReplacements,
+  applyManualOrder,
   buildVisibleAlbums,
   getRemovedAlbumIds,
+  hasSameSlotOrder,
   orderAlbums,
+  removeSlotFromOrder,
+  reorderSlots,
   scoreAlbumsFromTracks,
+  slotsToAlbums,
+  slotsToOrder,
+  type CollageOrderSource,
 } from './collage'
 import {
   clearCollageSettings,
@@ -13,6 +21,7 @@ import {
   saveCollageSettings,
 } from './settings'
 import {
+  AlbumEditorPanel,
   AppShell,
   AuthErrorBanner,
   CollagePreview,
@@ -24,7 +33,7 @@ import {
   RemovedAlbumsTray,
 } from './components'
 import { useTopTracks } from './spotify'
-import type { AlbumCandidate, CollageSettings } from './types'
+import type { AlbumCandidate, AlbumReplacements, CollageAlbumSlot, CollageSettings } from './types'
 
 function App() {
   const {
@@ -43,6 +52,10 @@ function App() {
   const [settings, setSettings] = useState<CollageSettings>(loadCollageSettings)
   const [shuffleSeed, setShuffleSeed] = useState(0)
   const [removedAlbums, setRemovedAlbums] = useState<AlbumCandidate[]>([])
+  const [albumReplacements, setAlbumReplacements] = useState<AlbumReplacements>({})
+  const [selectedSlot, setSelectedSlot] = useState<CollageAlbumSlot | null>(null)
+  const [orderSource, setOrderSource] = useState<CollageOrderSource>('pipeline')
+  const [manualSlotOrder, setManualSlotOrder] = useState<string[]>([])
 
   useEffect(() => {
     saveCollageSettings(settings)
@@ -56,13 +69,24 @@ function App() {
 
   const handleLogout = useCallback(() => {
     setRemovedAlbums([])
+    setAlbumReplacements({})
+    setSelectedSlot(null)
     setShuffleSeed(0)
+    setOrderSource('pipeline')
+    setManualSlotOrder([])
     logout()
   }, [logout])
 
   const handleReshuffle = useCallback(() => {
     setShuffleSeed((seed) => seed + 1)
+    setOrderSource('pipeline')
+    setManualSlotOrder([])
   }, [])
+
+  useEffect(() => {
+    setOrderSource('pipeline')
+    setManualSlotOrder([])
+  }, [settings.order])
 
   const scoreOptions = useMemo(
     () => ({
@@ -95,21 +119,128 @@ function App() {
     [orderedPool, removedAlbumIds, displayLimit],
   )
 
-  const removeAlbum = useCallback((album: AlbumCandidate) => {
-    setRemovedAlbums((current) => {
-      if (current.some((entry) => entry.albumId === album.albumId)) {
-        return current
+  const rankedVisibleAlbums = useMemo(
+    () =>
+      buildVisibleAlbums(
+        orderAlbums(availableAlbums, 'rank', 0),
+        removedAlbumIds,
+        displayLimit,
+      ),
+    [availableAlbums, removedAlbumIds, displayLimit],
+  )
+
+  const shuffledVisibleAlbums = useMemo(
+    () =>
+      buildVisibleAlbums(
+        orderAlbums(availableAlbums, 'random', shuffleSeed),
+        removedAlbumIds,
+        displayLimit,
+      ),
+    [availableAlbums, removedAlbumIds, displayLimit, shuffleSeed],
+  )
+
+  const pipelineSlots = useMemo(
+    () => applyAlbumReplacements(visibleAlbums, albumReplacements),
+    [visibleAlbums, albumReplacements],
+  )
+
+  const rankedSlots = useMemo(
+    () => applyAlbumReplacements(rankedVisibleAlbums, albumReplacements),
+    [rankedVisibleAlbums, albumReplacements],
+  )
+
+  const shuffledSlots = useMemo(
+    () => applyAlbumReplacements(shuffledVisibleAlbums, albumReplacements),
+    [shuffledVisibleAlbums, albumReplacements],
+  )
+
+  const albumSlots = useMemo(() => {
+    switch (orderSource) {
+      case 'rank':
+        return rankedSlots
+      case 'shuffle':
+        return shuffledSlots
+      case 'manual':
+        return applyManualOrder(pipelineSlots, manualSlotOrder)
+      default:
+        return pipelineSlots
+    }
+  }, [orderSource, pipelineSlots, rankedSlots, shuffledSlots, manualSlotOrder])
+
+  const exportAlbums = useMemo(() => slotsToAlbums(albumSlots), [albumSlots])
+
+  const showResetToRanked = !hasSameSlotOrder(albumSlots, rankedSlots)
+  const showResetToShuffled =
+    settings.order === 'random' && !hasSameSlotOrder(albumSlots, shuffledSlots)
+
+  const handleResetToRanked = useCallback(() => {
+    setOrderSource(settings.order === 'rank' ? 'pipeline' : 'rank')
+    setManualSlotOrder([])
+  }, [settings.order])
+
+  const handleResetToShuffled = useCallback(() => {
+    setOrderSource(settings.order === 'random' ? 'pipeline' : 'shuffle')
+    setManualSlotOrder([])
+  }, [settings.order])
+
+  const handleReorder = useCallback((fromIndex: number, toIndex: number) => {
+    const reordered = reorderSlots(albumSlots, fromIndex, toIndex)
+    setOrderSource('manual')
+    setManualSlotOrder(slotsToOrder(reordered))
+  }, [albumSlots])
+
+  const removeAlbum = useCallback(
+    (slot: CollageAlbumSlot) => {
+      const original = orderedPool.find((album) => album.albumId === slot.slotAlbumId)
+
+      if (original) {
+        setRemovedAlbums((current) => {
+          if (current.some((entry) => entry.albumId === slot.slotAlbumId)) {
+            return current
+          }
+
+          return [...current, original]
+        })
       }
 
-      return [...current, album]
-    })
-  }, [])
+      setAlbumReplacements((current) => {
+        if (!(slot.slotAlbumId in current)) {
+          return current
+        }
+
+        const next = { ...current }
+        delete next[slot.slotAlbumId]
+        return next
+      })
+      setManualSlotOrder((current) => removeSlotFromOrder(current, slot.slotAlbumId))
+      setSelectedSlot(null)
+    },
+    [orderedPool],
+  )
 
   const restoreAlbum = useCallback((albumId: string) => {
     setRemovedAlbums((current) => current.filter((album) => album.albumId !== albumId))
+    setAlbumReplacements((current) => {
+      if (!(albumId in current)) {
+        return current
+      }
+
+      const next = { ...current }
+      delete next[albumId]
+      return next
+    })
+  }, [])
+
+  const replaceAlbum = useCallback((slotAlbumId: string, replacement: AlbumCandidate) => {
+    setAlbumReplacements((current) => ({
+      ...current,
+      [slotAlbumId]: replacement,
+    }))
+    setSelectedSlot(null)
   }, [])
 
   const controlsDisabled = isLoading || Boolean(tracksError)
+  const accessToken = isConnected ? getValidAccessToken() : null
 
   if (!isConnected) {
     return (
@@ -140,14 +271,15 @@ function App() {
         preview={
           <CollagePreview
             settings={settings}
-            albums={visibleAlbums}
+            albumSlots={albumSlots}
             isConnected={isConnected}
             isLoadingTracks={isLoading}
             tracksError={tracksError}
             trackCount={tracks.length}
             availableAlbumCount={availableAlbums.length}
             disabled={controlsDisabled}
-            onRemoveAlbum={removeAlbum}
+            onSelectAlbum={setSelectedSlot}
+            onReorder={handleReorder}
             onRetry={retryTracks}
             onReconnect={() => void connect()}
           />
@@ -157,11 +289,15 @@ function App() {
             <ControlPanel
               settings={settings}
               onSettingsChange={setSettings}
-              visibleAlbums={visibleAlbums}
+              visibleAlbums={exportAlbums}
               availableAlbumCount={availableAlbums.length}
               isConnected={isConnected}
               disabled={controlsDisabled}
               onReshuffle={handleReshuffle}
+              showResetToRanked={showResetToRanked}
+              showResetToShuffled={showResetToShuffled}
+              onResetToRanked={handleResetToRanked}
+              onResetToShuffled={handleResetToShuffled}
               onLogout={handleLogout}
               onResetSettings={resetSettings}
               onRetryTracks={retryTracks}
@@ -175,6 +311,15 @@ function App() {
           </div>
         }
         footer={<PrivacySection />}
+      />
+
+      <AlbumEditorPanel
+        slot={selectedSlot}
+        accessToken={accessToken}
+        disabled={controlsDisabled}
+        onClose={() => setSelectedSlot(null)}
+        onRemove={removeAlbum}
+        onReplace={replaceAlbum}
       />
     </>
   )
