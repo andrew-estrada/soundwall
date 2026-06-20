@@ -14,8 +14,10 @@ import {
 } from './settings'
 import {
   AppShell,
+  AuthErrorBanner,
   CollagePreview,
   ConnectScreen,
+  ConnectSpotifyButton,
   ControlPanel,
   Header,
   PrivacySection,
@@ -25,8 +27,19 @@ import { useTopTracks } from './spotify'
 import type { AlbumCandidate, CollageSettings } from './types'
 
 function App() {
-  const { authState, connect, logout, dismissError, isConnected, isConnecting } = useAuth()
-  const { tracks, isLoading, error: tracksError } = useTopTracks(isConnected)
+  const {
+    authState,
+    connect,
+    logout,
+    invalidateSession,
+    dismissError,
+    isConnected,
+    isConnecting,
+  } = useAuth()
+  const { tracks, isLoading, error: tracksError, retry: retryTracks } = useTopTracks(
+    isConnected,
+    invalidateSession,
+  )
   const [settings, setSettings] = useState<CollageSettings>(loadCollageSettings)
   const [shuffleSeed, setShuffleSeed] = useState(0)
   const [removedAlbums, setRemovedAlbums] = useState<AlbumCandidate[]>([])
@@ -110,41 +123,60 @@ function App() {
   }
 
   return (
-    <AppShell
-      header={<Header isConnected={isConnected} />}
-      preview={
-        <CollagePreview
-          settings={settings}
-          albums={visibleAlbums}
-          isConnected={isConnected}
-          isLoadingTracks={isLoading}
-          tracksError={tracksError}
-          disabled={controlsDisabled}
-          onRemoveAlbum={removeAlbum}
-        />
-      }
-      controls={
-        <div className="app-shell__controls-stack">
-          <ControlPanel
-            settings={settings}
-            onSettingsChange={setSettings}
-            visibleAlbums={visibleAlbums}
-            availableAlbumCount={availableAlbums.length}
+    <>
+      {authState.status === 'error' && authState.error ? (
+        <AuthErrorBanner message={authState.error} onDismiss={dismissError} />
+      ) : null}
+
+      <AppShell
+        header={<Header isConnected={isConnected} />}
+        connectAction={
+          <ConnectSpotifyButton
             isConnected={isConnected}
-            disabled={controlsDisabled}
-            onReshuffle={handleReshuffle}
-            onLogout={handleLogout}
-            onResetSettings={resetSettings}
+            isConnecting={isConnecting}
+            onConnect={() => void connect()}
           />
-          <RemovedAlbumsTray
-            albums={removedAlbums}
+        }
+        preview={
+          <CollagePreview
+            settings={settings}
+            albums={visibleAlbums}
+            isConnected={isConnected}
+            isLoadingTracks={isLoading}
+            tracksError={tracksError}
+            trackCount={tracks.length}
+            availableAlbumCount={availableAlbums.length}
             disabled={controlsDisabled}
-            onRestoreAlbum={restoreAlbum}
+            onRemoveAlbum={removeAlbum}
+            onRetry={retryTracks}
+            onReconnect={() => void connect()}
           />
-        </div>
-      }
-      footer={<PrivacySection />}
-    />
+        }
+        controls={
+          <div className="app-shell__controls-stack">
+            <ControlPanel
+              settings={settings}
+              onSettingsChange={setSettings}
+              visibleAlbums={visibleAlbums}
+              availableAlbumCount={availableAlbums.length}
+              isConnected={isConnected}
+              disabled={controlsDisabled}
+              onReshuffle={handleReshuffle}
+              onLogout={handleLogout}
+              onResetSettings={resetSettings}
+              onRetryTracks={retryTracks}
+              tracksError={tracksError}
+            />
+            <RemovedAlbumsTray
+              albums={removedAlbums}
+              disabled={controlsDisabled}
+              onRestoreAlbum={restoreAlbum}
+            />
+          </div>
+        }
+        footer={<PrivacySection />}
+      />
+    </>
   )
 }
 

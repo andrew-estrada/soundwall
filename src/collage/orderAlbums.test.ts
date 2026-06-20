@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest'
 import type { AlbumCandidate } from '../types'
 import { orderAlbums } from './orderAlbums'
 
-function createAlbum(id: string, score: number): AlbumCandidate {
+function createAlbum(
+  albumId: string,
+  score: number,
+  albumName = `Album ${albumId}`,
+): AlbumCandidate {
   return {
-    albumId: id,
-    albumName: `Album ${id}`,
-    artistId: `artist-${id}`,
-    artistName: `Artist ${id}`,
-    imageUrl: `https://example.com/${id}.jpg`,
-    spotifyUrl: `https://open.spotify.com/album/${id}`,
+    albumId,
+    albumName,
+    artistId: `artist-${albumId}`,
+    artistName: `Artist ${albumId}`,
+    imageUrl: `https://example.com/${albumId}.jpg`,
+    spotifyUrl: `https://open.spotify.com/album/${albumId}`,
     score,
     sourceTrackNames: [],
     sourceTimeRanges: [],
@@ -17,23 +21,48 @@ function createAlbum(id: string, score: number): AlbumCandidate {
 }
 
 describe('orderAlbums', () => {
-  const albums = [
-    createAlbum('c', 30),
-    createAlbum('a', 50),
-    createAlbum('b', 40),
-    createAlbum('d', 10),
-  ]
+  it('sorts albums by score descending when order is rank', () => {
+    const albums = [
+      createAlbum('low', 10),
+      createAlbum('high', 50),
+      createAlbum('mid', 30),
+    ]
 
-  it('returns score order for rank mode', () => {
     expect(orderAlbums(albums, 'rank').map((album) => album.albumId)).toEqual([
-      'a',
-      'b',
-      'c',
-      'd',
+      'high',
+      'mid',
+      'low',
     ])
   })
 
+  it('breaks score ties by album name', () => {
+    const albums = [
+      createAlbum('b-album', 40, 'Bravo'),
+      createAlbum('a-album', 40, 'Alpha'),
+    ]
+
+    expect(orderAlbums(albums, 'rank').map((album) => album.albumId)).toEqual([
+      'a-album',
+      'b-album',
+    ])
+  })
+
+  it('does not mutate the input array', () => {
+    const albums = [createAlbum('one', 10), createAlbum('two', 20)]
+
+    orderAlbums(albums, 'rank')
+
+    expect(albums.map((album) => album.albumId)).toEqual(['one', 'two'])
+  })
+
   it('returns the same shuffled order for the same seed', () => {
+    const albums = [
+      createAlbum('c', 30),
+      createAlbum('a', 50),
+      createAlbum('b', 40),
+      createAlbum('d', 10),
+    ]
+
     const first = orderAlbums(albums, 'random', 42).map((album) => album.albumId)
     const second = orderAlbums(albums, 'random', 42).map((album) => album.albumId)
 
@@ -41,14 +70,29 @@ describe('orderAlbums', () => {
   })
 
   it('returns a different shuffled order when the seed changes', () => {
-    const first = orderAlbums(albums, 'random', 1).map((album) => album.albumId)
-    const second = orderAlbums(albums, 'random', 2).map((album) => album.albumId)
+    const albums = [
+      createAlbum('a', 10),
+      createAlbum('b', 20),
+      createAlbum('c', 30),
+      createAlbum('d', 40),
+      createAlbum('e', 50),
+    ]
 
-    expect(first).not.toEqual(second)
+    const seedOne = orderAlbums(albums, 'random', 1).map((album) => album.albumId)
+    const seedTwo = orderAlbums(albums, 'random', 2).map((album) => album.albumId)
+
+    expect(seedOne).not.toEqual(seedTwo)
   })
 
   it('ignores the incoming array order when shuffling', () => {
+    const albums = [
+      createAlbum('c', 30),
+      createAlbum('a', 50),
+      createAlbum('b', 40),
+      createAlbum('d', 10),
+    ]
     const reversed = [...albums].reverse()
+
     const shuffled = orderAlbums(reversed, 'random', 7).map((album) => album.albumId)
     const shuffledAgain = orderAlbums(albums, 'random', 7).map((album) => album.albumId)
 

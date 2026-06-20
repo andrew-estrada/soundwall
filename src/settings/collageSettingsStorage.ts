@@ -15,7 +15,7 @@ export interface PersistedCollageSettings {
   oneAlbumPerArtist: boolean
 }
 
-const VALID_ORDERS: CollageOrder[] = ['rank', 'random', 'artist']
+const VALID_ORDERS: CollageOrder[] = ['rank', 'random']
 const SPACING_MIN = 0
 const SPACING_MAX = 24
 const HEX_COLOR_PATTERN = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/

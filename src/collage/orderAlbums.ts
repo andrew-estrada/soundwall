@@ -2,12 +2,13 @@ import type { AlbumCandidate, CollageOrder } from '../types'
 
 function sortByRank(albums: AlbumCandidate[]): AlbumCandidate[] {
   return [...albums].sort((left, right) => {
-    const scoreDelta = right.score - left.score
-    if (scoreDelta !== 0) {
-      return scoreDelta
+    if (right.score !== left.score) {
+      return right.score - left.score
     }
 
-    return left.albumId.localeCompare(right.albumId)
+    return left.albumName.localeCompare(right.albumName, undefined, {
+      sensitivity: 'base',
+    })
   })
 }
 
@@ -30,10 +31,6 @@ export function orderAlbums(
   shuffleSeed = 0,
 ): AlbumCandidate[] {
   switch (order) {
-    case 'artist':
-      return [...albums].sort((left, right) =>
-        left.artistName.localeCompare(right.artistName, undefined, { sensitivity: 'base' }),
-      )
     case 'random':
       return shuffleAlbums(albums, shuffleSeed)
     case 'rank':

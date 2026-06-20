@@ -25,7 +25,7 @@ describe('getTightestGridPresetForAlbumCount', () => {
   })
 
   it('returns the smallest grid that can fit the album count', () => {
-    expect(getTightestGridPresetForAlbumCount(50)?.id).toBe('grid-8x10')
+    expect(getTightestGridPresetForAlbumCount(50)?.id).toBe('grid-6x10')
     expect(getTightestGridPresetForAlbumCount(64)?.id).toBe('grid-8x10')
   })
 })
@@ -33,7 +33,7 @@ describe('getTightestGridPresetForAlbumCount', () => {
 describe('formatAlbumCountGridHint', () => {
   it('suggests a better layout when the current grid is too small', () => {
     expect(formatAlbumCountGridHint(50, 'grid-5x5')).toBe(
-      'Works well with the 8 × 10 layout (80 cells).',
+      'Works well with the 6 × 10 layout (60 cells).',
     )
   })
 

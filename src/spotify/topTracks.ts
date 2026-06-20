@@ -53,12 +53,9 @@ async function fetchTopTracksForRange(
 }
 
 export async function fetchTopTracks(accessToken: string): Promise<RankedSpotifyTrack[]> {
-  const tracks: RankedSpotifyTrack[] = []
+  const results = await Promise.all(
+    TIME_RANGES.map((timeRange) => fetchTopTracksForRange(accessToken, timeRange)),
+  )
 
-  for (const timeRange of TIME_RANGES) {
-    const rangeTracks = await fetchTopTracksForRange(accessToken, timeRange)
-    tracks.push(...rangeTracks)
-  }
-
-  return tracks
+  return results.flat()
 }

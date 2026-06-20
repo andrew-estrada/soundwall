@@ -5,8 +5,12 @@ import {
   CollageExportError,
   exportCollagePdf,
   exportCollagePng,
+  findGridPresetByDimensions,
   formatAlbumCountGridHint,
   formatExportMessage,
+  gridsMatch,
+  hasExportGridAspectMismatch,
+  isLargePosterExport,
 } from '../collage'
 import {
   EXPORT_SIZE_PRESETS,
@@ -26,6 +30,8 @@ interface ControlPanelProps {
   onLogout: () => void
   onResetSettings: () => void
   onReshuffle: () => void
+  onRetryTracks?: () => void
+  tracksError?: string | null
 }
 
 const EXPORT_GROUPS = [
@@ -49,6 +55,8 @@ export function ControlPanel({
   onLogout,
   onResetSettings,
   onReshuffle,
+  onRetryTracks,
+  tracksError = null,
 }: ControlPanelProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [exportingFormat, setExportingFormat] = useState<'png' | 'pdf' | null>(null)
@@ -65,6 +73,17 @@ export function ControlPanel({
   const albumCountGridHint = formatAlbumCountGridHint(settings.albumCount, settings.gridPresetId)
   const allowArtistDuplicates = !settings.oneAlbumPerArtist
   const exportPreset = findCollagePreset(settings.exportPresetId)
+  const recommendedGrid = exportPreset?.recommendedGrid
+  const showRecommendedGrid =
+    exportPreset &&
+    exportPreset.category !== 'grid' &&
+    recommendedGrid &&
+    !gridsMatch(recommendedGrid, {
+      cols: settings.gridCols,
+      rows: settings.gridRows,
+    })
+  const hasAspectMismatch = hasExportGridAspectMismatch(settings)
+  const showPosterPdfHint = isLargePosterExport(settings.exportPresetId)
   const canExport = !disabled && !isExporting && visibleAlbums.length > 0
 
   function update<K extends keyof CollageSettings>(key: K, value: CollageSettings[K]) {
@@ -96,6 +115,24 @@ export function ControlPanel({
       gridPresetId: preset.id,
       gridCols: preset.recommendedGrid.cols,
       gridRows: preset.recommendedGrid.rows,
+    })
+  }
+
+  function applyRecommendedGrid() {
+    if (!recommendedGrid) {
+      return
+    }
+
+    const gridPreset = findGridPresetByDimensions(
+      recommendedGrid.cols,
+      recommendedGrid.rows,
+    )
+
+    onSettingsChange({
+      ...settings,
+      gridCols: recommendedGrid.cols,
+      gridRows: recommendedGrid.rows,
+      gridPresetId: gridPreset?.id ?? settings.gridPresetId,
     })
   }
 
@@ -207,6 +244,23 @@ export function ControlPanel({
           )}
         </div>
 
+        {showRecommendedGrid && recommendedGrid ? (
+          <div className="controls-panel__inline-action">
+            <p className="control-field__hint">
+              Export size and grid layout are independent. Recommended grid:{' '}
+              {formatRecommendedGrid(recommendedGrid)}.
+            </p>
+            <button
+              type="button"
+              className="control-button control-button--ghost"
+              disabled={disabled}
+              onClick={applyRecommendedGrid}
+            >
+              Apply recommended grid
+            </button>
+          </div>
+        ) : null}
+
         <div className="control-field">
           <label className="control-field__label" htmlFor="grid-size">
             Layout
@@ -265,6 +319,14 @@ export function ControlPanel({
         </div>
       </div>
 
+      {hasAspectMismatch ? (
+        <p className="controls-panel__warning" role="status">
+          Export size aspect ratio ({settings.exportWidth} × {settings.exportHeight}) differs from
+          the grid layout ({settings.gridCols} × {settings.gridRows}). Preview shows the grid
+          shape; export uses the selected export dimensions.
+        </p>
+      ) : null}
+
       <div className="controls-panel__section">
         <div className="control-field">
           <label className="control-field__label" htmlFor="order">
@@ -273,7 +335,7 @@ export function ControlPanel({
           <select
             id="order"
             className="control-field__select"
-            value={settings.order === 'artist' ? 'rank' : settings.order}
+            value={settings.order}
             disabled={disabled}
             onChange={(event) => update('order', event.target.value as CollageOrder)}
           >
@@ -326,6 +388,13 @@ export function ControlPanel({
           </p>
         ) : null}
 
+        {showPosterPdfHint ? (
+          <p className="control-field__hint">
+            Large poster exports are most reliable as PNG. PDF may downscale the image to fit browser
+            limits.
+          </p>
+        ) : null}
+
         <button
           type="button"
           className="control-button control-button--primary"
@@ -364,6 +433,17 @@ export function ControlPanel({
           <p className="controls-panel__success" role="status">
             {exportMessage}
           </p>
+        ) : null}
+
+        {onRetryTracks && isConnected && tracksError ? (
+          <button
+            type="button"
+            className="control-button control-button--ghost"
+            disabled={isExporting}
+            onClick={onRetryTracks}
+          >
+            Retry loading tracks
+          </button>
         ) : null}
       </div>
 

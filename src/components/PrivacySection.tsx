@@ -12,6 +12,23 @@ export function PrivacySection() {
         <li>Listening data and album lists are never saved between sessions.</li>
         <li>No database, no account, no server upload.</li>
       </ul>
+      <p className="privacy-section__footer">
+        Setup: create a Spotify Developer app, add the redirect URI from the README, and set{' '}
+        <code className="privacy-section__code">VITE_SPOTIFY_CLIENT_ID</code> in{' '}
+        <code className="privacy-section__code">.env.local</code>.{' '}
+        <a
+          className="privacy-section__link"
+          href="https://developer.spotify.com/dashboard"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Spotify Developer Dashboard
+        </a>
+        {' · '}
+        <a className="privacy-section__link" href="/NOTICE.md" target="_blank" rel="noreferrer">
+          Notice
+        </a>
+      </p>
     </section>
   )
 }

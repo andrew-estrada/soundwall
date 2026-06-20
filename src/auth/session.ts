@@ -7,14 +7,15 @@ export const initialAuthState: AuthState = {
 }
 
 export function readAuthState(): AuthState {
+  if (isAuthenticated()) {
+    consumeFlashAuthError()
+    return { status: 'connected' }
+  }
+
   const flashError = consumeFlashAuthError()
 
   if (flashError) {
     return { status: 'error', error: flashError }
-  }
-
-  if (isAuthenticated()) {
-    return { status: 'connected' }
   }
 
   return { status: 'disconnected' }

@@ -530,7 +530,16 @@
   gap: 8px;
   text-align: center;
   color: var(--color-text-muted);
-  max-width: 36ch;
+  max-width: 42ch;
+}
+
+.collage-preview__empty-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  text-align: left;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
 }
 
 .collage-preview__empty-icon {
@@ -821,6 +830,12 @@
   animation: collage-preview-spin 0.9s linear infinite;
 }
 
+.controls-panel__inline-action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Privacy section */
 
 .privacy-section {
@@ -958,4 +973,26 @@
 .removed-albums-tray__restore:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.privacy-section__footer {
+  margin: 12px 0 0;
+  color: var(--color-text-subtle);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.privacy-section__link {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.privacy-section__link:hover {
+  text-decoration: underline;
+}
+
+.privacy-section__code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }

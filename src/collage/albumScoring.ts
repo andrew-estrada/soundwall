@@ -85,7 +85,13 @@ function applyOneAlbumPerArtist(candidates: AlbumCandidate[]): AlbumCandidate[] 
     }
   }
 
-  return [...bestByArtist.values()].sort((left, right) => right.score - left.score)
+  return [...bestByArtist.values()].sort((left, right) => {
+    if (right.score !== left.score) {
+      return right.score - left.score
+    }
+
+    return left.albumName.localeCompare(right.albumName, undefined, { sensitivity: 'base' })
+  })
 }
 
 export function scoreAlbumsFromTracks(
@@ -133,7 +139,15 @@ export function scoreAlbumsFromTracks(
 
   let candidates = [...albums.values()]
     .map(toAlbumCandidate)
-    .sort((left, right) => right.score - left.score)
+    .sort((left, right) => {
+      if (right.score !== left.score) {
+        return right.score - left.score
+      }
+
+      return left.albumName.localeCompare(right.albumName, undefined, {
+        sensitivity: 'base',
+      })
+    })
 
   if (options.oneAlbumPerArtist) {
     candidates = applyOneAlbumPerArtist(candidates)

@@ -1,6 +1,6 @@
 import type { SpotifyTimeRange } from './spotify'
 
-export type CollageOrder = 'rank' | 'random' | 'artist'
+export type CollageOrder = 'rank' | 'random'
 
 export type CollagePresetCategory = 'square' | 'wallpaper' | 'poster' | 'grid'
 
@@ -30,13 +30,6 @@ export interface CollageSettings {
   oneAlbumPerArtist: boolean
   exportWidth: number
   exportHeight: number
-}
-
-export interface CollageAlbum {
-  id: string
-  name: string
-  artistName: string
-  imageUrl: string
 }
 
 export interface AlbumCandidate {
